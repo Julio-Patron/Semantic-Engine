@@ -443,6 +443,29 @@ async def api_rerank(
     if not key_data:
         raise HTTPException(status_code=403, detail="Invalid API Key")
 
+    # 1. Rate Limiting (Phase 3)
+    await check_rate_limit(key_data)
+
+    # 2. Self-Healing Parameters Validation (Phase 3)
+    if len(payload.documents) == 0:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "invalid_parameters",
+                "message": "The 'documents' list cannot be empty. Please provide at least one document to rerank.",
+                "retryable": True
+            }
+        )
+    if payload.top_n > len(payload.documents):
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "invalid_parameters",
+                "message": f"The parameter 'top_n' ({payload.top_n}) cannot be greater than the number of provided documents ({len(payload.documents)}). Please set 'top_n' to an integer between 1 and {len(payload.documents)} and retry.",
+                "retryable": True
+            }
+        )
+
     credits_remaining = key_data.get("credits_remaining", 0)
     credits_needed = max(1, (len(payload.documents) + 24) // 25)
     
@@ -450,17 +473,36 @@ async def api_rerank(
         raise HTTPException(status_code=402, detail="Insufficient credits")
 
     t0 = time.time()
-    service = RerankerService()
     
-    # We call rerank method
-    # Note: RerankerService returns {"results": [...], "meta": {...}}
-    result = await service.rerank(
-        query=payload.query,
-        documents=payload.documents,
-        top_n=payload.top_n
-    )
+    # 3. Redis Caching / Deduplication (Phase 3)
+    # Create deterministic hash for the payload
+    payload_hash = hashlib.sha256((payload.query + "".join(payload.documents) + str(payload.top_n)).encode()).hexdigest()
+    cache_key = f"gateway:cache:rerank:{payload_hash}"
     
-    # Calculate tokens saved (from result["meta"]["token_metrics"]["saved_tokens"])
+    result = None
+    if redis_available:
+        try:
+            cached_result = await redis_client.get(cache_key)
+            if cached_result:
+                result = json.loads(cached_result)
+        except Exception as e:
+            logger.error(f"Redis get cache error: {e}")
+
+    if not result:
+        service = RerankerService()
+        result = await service.rerank(
+            query=payload.query,
+            documents=payload.documents,
+            top_n=payload.top_n
+        )
+        if redis_available:
+            try:
+                # Cache for 60 seconds
+                await redis_client.setex(cache_key, 60, json.dumps(result))
+            except Exception as e:
+                logger.error(f"Redis set cache error: {e}")
+
+    # Calculate tokens saved
     saved_tokens = result.get("meta", {}).get("token_metrics", {}).get("saved_tokens", 0)
     total_tokens = result.get("meta", {}).get("token_metrics", {}).get("input_tokens", 0)
     
@@ -488,7 +530,7 @@ async def api_rerank(
     )
 
     latency_ms = (time.time() - t0) * 1000
-    # Also log request metric
+    # Also log request metric (Async metrics injection)
     asyncio.create_task(
         log_request_metric(key_data, "/v1/rerank", 200, latency_ms, tokens=total_tokens)
     )
