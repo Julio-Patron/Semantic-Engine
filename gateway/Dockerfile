@@ -10,14 +10,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Instalar Rust Toolchain (Requerido por Maturin/PyO3 para compilar jas_vector_core)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml README.md ./
+COPY core_rs/ ./core_rs/
 COPY ses/ ./ses/
 COPY gateway/ ./gateway/
 
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip maturin && \
     pip install --no-cache-dir ".[server]"
 
 # Stage 2: Minimal, secure runtime container
