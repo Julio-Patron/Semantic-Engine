@@ -93,3 +93,32 @@ export interface ApiAnalytics {
   avg_latency_ms: number;
   endpoints: Record<string, EndpointMetric>;
 }
+
+export interface RerankParams {
+  query: string;
+  documents: string[];
+  topN?: number;
+  returnDocuments?: boolean;
+}
+
+export interface RerankDocumentResult {
+  index: number;
+  relevance_score: number;
+  document?: string;
+}
+
+export interface RerankTokenMetrics {
+  total_tokens: number;
+}
+
+export interface RerankMeta {
+  tokens: RerankTokenMetrics;
+  credits_deducted: number;
+  credits_remaining: number;
+  tokens_saved: number;
+}
+
+export interface RerankResponse {
+  results: RerankDocumentResult[];
+  meta: RerankMeta;
+}

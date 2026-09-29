@@ -9,6 +9,8 @@ import type {
   HealthResponse,
   ApiKeyDetails,
   ApiAnalytics,
+  RerankParams,
+  RerankResponse,
 } from "./types.js";
 
 export class SemanticEngineClient {
@@ -76,6 +78,26 @@ export class SemanticEngineClient {
         threshold: params.threshold || 0.0,
         generate_answer: params.generateAnswer || false,
         model_override: params.modelOverride,
+      }),
+    });
+  }
+
+  /**
+   * Rerank a list of documents based on semantic relevance to a query.
+   * Leverages zero-copy Rust acceleration.
+   */
+  async rerank(params: RerankParams): Promise<RerankResponse> {
+    return this.request<RerankResponse>("/v1/rerank", {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${this.apiKey}`
+      },
+      body: JSON.stringify({
+        query: params.query,
+        documents: params.documents,
+        top_n: params.topN || 5,
+        return_documents: params.returnDocuments ?? true,
       }),
     });
   }
