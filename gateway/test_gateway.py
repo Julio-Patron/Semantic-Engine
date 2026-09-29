@@ -41,7 +41,9 @@ def mock_gateway_services():
                 "namespace": "tenant_12345678",
                 "rate_limit": 100,
                 "role": "admin",
-                "tenant_id": "tenant_uuid_dev"
+                "tenant_id": "tenant_uuid_dev",
+                "credits_remaining": 1000,
+                "tokens_saved_total": 0
             }
         }
         
@@ -142,6 +144,15 @@ def mock_gateway_services():
             ]
         })
         
+        async def mock_update_credits(key_hash, credits_deducted, tokens_saved):
+            if key_hash in active_hashes:
+                return {
+                    "credits_remaining": 990,
+                    "tokens_saved_total": tokens_saved
+                }
+            raise ValueError("API Key not found")
+        mock_db.update_credits = mock_update_credits
+
         mock_db_func.return_value = mock_db
 
         # Setup mock vector engine
@@ -487,3 +498,42 @@ async def test_admin_health_report():
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
     assert "attachment" in response.headers["content-disposition"]
+
+
+def test_rerank():
+    # RerankService will be invoked
+    # Make sure we use the 'Authorization' header
+    headers = {"Authorization": f"Bearer {TEST_ADMIN_KEY}"}
+    payload = {
+        "query": "hello world",
+        "documents": ["doc1", "doc2 hello", "world peace"],
+        "top_n": 2,
+        "return_documents": True
+    }
+    
+    # We should also mock RerankerService
+    with patch("gateway.server.RerankerService") as mock_reranker_class:
+        mock_instance = AsyncMock()
+        mock_instance.rerank.return_value = {
+            "results": [
+                {"index": 1, "relevance_score": 0.9, "document": "doc2 hello"},
+                {"index": 2, "relevance_score": 0.5, "document": "world peace"}
+            ],
+            "meta": {
+                "token_metrics": {
+                    "input_tokens": 10,
+                    "output_tokens": 6,
+                    "saved_tokens": 4,
+                    "savings_percentage": 40.0
+                }
+            }
+        }
+        mock_reranker_class.return_value = mock_instance
+        
+        response = client.post("/v1/rerank", json=payload, headers=headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["results"]) == 2
+        assert data["meta"]["credits_deducted"] == 1
+        assert data["meta"]["credits_remaining"] == 990
+        assert data["meta"]["tokens_saved"] == 4

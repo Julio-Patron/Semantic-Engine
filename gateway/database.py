@@ -45,6 +45,10 @@ class DatabaseAdapter(abc.ABC):
         pass
 
     @abc.abstractmethod
+    async def update_credits(self, key_hash: str, credits_deducted: int, tokens_saved: int) -> Dict[str, Any]:
+        pass
+
+    @abc.abstractmethod
     async def get_analytics(self) -> Dict[str, Any]:
         pass
 
@@ -94,6 +98,8 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 key_hash TEXT NOT NULL UNIQUE,
                 key_prefix TEXT NOT NULL,
                 status TEXT DEFAULT 'active',
+                credits_remaining INTEGER DEFAULT 1000,
+                tokens_saved_total INTEGER DEFAULT 0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 expires_at TEXT,
                 last_used_at TEXT
@@ -153,6 +159,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT k.id as key_id, k.key_hash, k.key_prefix, k.status, 
+                           k.credits_remaining, k.tokens_saved_total,
                            t.id as tenant_id, t.name as tenant_name, t.plan_tier, 
                            t.rate_limit_per_minute as rate_limit, t.is_active
                     FROM api_keys k
@@ -178,7 +185,9 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                     "namespace": f"tenant_{row['tenant_id'][:8]}",  # Isolates namespace per tenant id
                     "rate_limit": row["rate_limit"],
                     "role": "admin" if row["plan_tier"] == "enterprise" else "client",
-                    "tenant_id": row["tenant_id"]
+                    "tenant_id": row["tenant_id"],
+                    "credits_remaining": row["credits_remaining"],
+                    "tokens_saved_total": row["tokens_saved_total"]
                 }
         return await asyncio.to_thread(_query)
 
@@ -272,6 +281,21 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 )
                 conn.commit()
         await asyncio.to_thread(_log)
+
+    async def update_credits(self, key_hash: str, credits_deducted: int, tokens_saved: int) -> Dict[str, Any]:
+        def _update():
+            with self._get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute(
+                    "UPDATE api_keys SET credits_remaining = credits_remaining - ?, tokens_saved_total = tokens_saved_total + ? WHERE key_hash = ? RETURNING credits_remaining, tokens_saved_total",
+                    (credits_deducted, tokens_saved, key_hash)
+                )
+                row = cursor.fetchone()
+                conn.commit()
+                if not row:
+                    raise ValueError("API Key not found")
+                return {"credits_remaining": row["credits_remaining"], "tokens_saved_total": row["tokens_saved_total"]}
+        return await asyncio.to_thread(_update)
 
     async def get_analytics(self) -> Dict[str, Any]:
         def _analytics():
@@ -382,6 +406,8 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                 key_hash VARCHAR(255) NOT NULL UNIQUE,
                 key_prefix VARCHAR(15) NOT NULL,
                 status VARCHAR(20) DEFAULT 'active',
+                credits_remaining INT DEFAULT 1000,
+                tokens_saved_total INT DEFAULT 0,
                 created_at TIMESTAMPTZ DEFAULT NOW(),
                 expires_at TIMESTAMPTZ,
                 last_used_at TIMESTAMPTZ
@@ -427,6 +453,7 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
                 SELECT k.id as key_id, k.key_hash, k.key_prefix, k.status, 
+                       k.credits_remaining, k.tokens_saved_total,
                        t.id as tenant_id, t.name as tenant_name, t.plan_tier, 
                        t.rate_limit_per_minute as rate_limit, t.is_active
                 FROM api_keys k
@@ -451,7 +478,9 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                 "namespace": f"tenant_{str(row['tenant_id'])[:8]}",
                 "rate_limit": row["rate_limit"],
                 "role": "admin" if row["plan_tier"] == "enterprise" else "client",
-                "tenant_id": str(row["tenant_id"])
+                "tenant_id": str(row["tenant_id"]),
+                "credits_remaining": row["credits_remaining"],
+                "tokens_saved_total": row["tokens_saved_total"]
             }
 
     async def create_api_key(self, name: str, namespace: str, rate_limit: int, role: str) -> Dict[str, Any]:
@@ -526,6 +555,16 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                 "INSERT INTO usage_logs (tenant_id, api_key_id, endpoint_accessed, tokens_consumed, processing_time_ms) VALUES ($1, $2, $3, $4, $5)",
                 t_uuid, k_uuid, endpoint, tokens, latency_ms
             )
+
+    async def update_credits(self, key_hash: str, credits_deducted: int, tokens_saved: int) -> Dict[str, Any]:
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "UPDATE api_keys SET credits_remaining = credits_remaining - $1, tokens_saved_total = tokens_saved_total + $2 WHERE key_hash = $3 RETURNING credits_remaining, tokens_saved_total",
+                credits_deducted, tokens_saved, key_hash
+            )
+            if not row:
+                raise ValueError("API Key not found")
+            return {"credits_remaining": row["credits_remaining"], "tokens_saved_total": row["tokens_saved_total"]}
 
     async def get_analytics(self) -> Dict[str, Any]:
         async with self.pool.acquire() as conn:

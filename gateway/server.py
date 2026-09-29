@@ -42,6 +42,7 @@ from ses.config import (
     REDIS_PASSWORD,
     REDIS_PORT,
 )
+from ses.services.reranker import RerankerService
 
 # Database imports
 from gateway.database import get_database_adapter
@@ -397,8 +398,102 @@ class APIKeyCreatePayload(BaseModel):
     rate_limit: int = Field(60, description="Maximum requests per minute")
     role: str = Field("client", description="Security role (admin or client)")
 
+class RerankRequest(BaseModel):
+    query: str = Field(..., description="Query string for reranking")
+    documents: List[str] = Field(..., description="List of documents to rerank")
+    top_n: int = Field(5, description="Number of top documents to return")
+    return_documents: bool = Field(True, description="Whether to include documents in response")
+
+class RerankDocumentResult(BaseModel):
+    index: int
+    relevance_score: float
+    document: Optional[str] = None
+
+class RerankTokenMetrics(BaseModel):
+    total_tokens: int
+
+class RerankMeta(BaseModel):
+    tokens: RerankTokenMetrics
+    credits_deducted: int
+    credits_remaining: int
+    tokens_saved: int
+
+class RerankResponse(BaseModel):
+    results: List[RerankDocumentResult]
+    meta: RerankMeta
+
 
 # --- API ROUTES ---
+
+AUTHORIZATION_HEADER = APIKeyHeader(name="Authorization", auto_error=False)
+
+@app.post("/v1/rerank", response_model=RerankResponse, summary="Rerank documents")
+async def api_rerank(
+    payload: RerankRequest, 
+    api_key: str = Security(AUTHORIZATION_HEADER)
+):
+    if not api_key:
+        raise HTTPException(status_code=401, detail="Missing Authorization header")
+    if api_key.startswith("Bearer "):
+        api_key = api_key[len("Bearer "):].strip()
+
+    key_hash = hashlib.sha256(api_key.encode()).hexdigest()
+    db = get_database_adapter()
+    key_data = await db.get_api_key(key_hash)
+    if not key_data:
+        raise HTTPException(status_code=403, detail="Invalid API Key")
+
+    credits_remaining = key_data.get("credits_remaining", 0)
+    credits_needed = max(1, (len(payload.documents) + 24) // 25)
+    
+    if credits_remaining < credits_needed:
+        raise HTTPException(status_code=402, detail="Insufficient credits")
+
+    t0 = time.time()
+    service = RerankerService()
+    
+    # We call rerank method
+    # Note: RerankerService returns {"results": [...], "meta": {...}}
+    result = await service.rerank(
+        query=payload.query,
+        documents=payload.documents,
+        top_n=payload.top_n
+    )
+    
+    # Calculate tokens saved (from result["meta"]["token_metrics"]["saved_tokens"])
+    saved_tokens = result.get("meta", {}).get("token_metrics", {}).get("saved_tokens", 0)
+    total_tokens = result.get("meta", {}).get("token_metrics", {}).get("input_tokens", 0)
+    
+    # Update credits
+    update_res = await db.update_credits(key_hash, credits_needed, saved_tokens)
+    
+    final_credits_remaining = update_res.get("credits_remaining", 0)
+    final_tokens_saved_total = update_res.get("tokens_saved_total", 0)
+
+    # Prepare response
+    docs_res = []
+    for r in result.get("results", []):
+        doc_text = r["document"] if payload.return_documents else None
+        docs_res.append(RerankDocumentResult(
+            index=r["index"],
+            relevance_score=r["relevance_score"],
+            document=doc_text
+        ))
+
+    meta = RerankMeta(
+        tokens=RerankTokenMetrics(total_tokens=total_tokens),
+        credits_deducted=credits_needed,
+        credits_remaining=final_credits_remaining,
+        tokens_saved=final_tokens_saved_total
+    )
+
+    latency_ms = (time.time() - t0) * 1000
+    # Also log request metric
+    asyncio.create_task(
+        log_request_metric(key_data, "/v1/rerank", 200, latency_ms, tokens=total_tokens)
+    )
+
+    return RerankResponse(results=docs_res, meta=meta)
 
 @app.post("/api/v1/search", summary="Search vector store and generate RAG responses")
 async def api_search(payload: SearchRequestPayload, key_data: Dict[str, Any] = Depends(get_api_key_details)):

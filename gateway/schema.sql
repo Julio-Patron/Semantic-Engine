@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
     key_hash VARCHAR(255) NOT NULL UNIQUE, -- SHA-256 hash de la llave
     key_prefix VARCHAR(15) NOT NULL, -- Prefijo (ej: 'ses_live_a1b2...') para mostrar en UI
     status VARCHAR(20) DEFAULT 'active', -- Estados: active, revoked, paused
+    credits_remaining INT DEFAULT 1000,
+    tokens_saved_total INT DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     expires_at TIMESTAMPTZ,
     last_used_at TIMESTAMPTZ
