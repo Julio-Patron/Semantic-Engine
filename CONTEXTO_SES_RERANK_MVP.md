@@ -21,20 +21,28 @@ La arquitectura fue diseñada para ser **aditiva, no destructiva**.
 
 ## 3. Hoja de Ruta para Próximas Sesiones (Siguientes Pasos Reales)
 
-**Paso 1: Release y Merge (La Publicación Técnica)**
+**Paso 1: Release y Merge (Publicación PyPI y Crates.io)**
 - Incrementar versión en `pyproject.toml`, `core_rs/Cargo.toml` y `sdk/typescript/package.json`.
 - Hacer *Pull Request* hacia `main` en GitHub.
-- Vigilar que `.github/workflows/publish.yml` se ejecute con éxito.
+- El agente debe vigilar que `.github/workflows/publish.yml` compile exitosamente con Maturin y publique las nuevas versiones oficiales y gratuitas en **PyPI** y **crates.io** para la comunidad.
 
-**Paso 2: Despliegue en la Nube (PaaS)**
+**Paso 2: Despliegue en la Nube (El Gateway SaaS)**
 - El agente deberá guiar al usuario a conectar GitHub con **Render.com** o **Railway.app**.
 - Apuntar el servicio al `gateway/Dockerfile`.
 - Configurar las variables de entorno de producción (`REDIS_PASSWORD`, `GATEWAY_ADMIN_KEY`, `STRIPE_WEBHOOK_SECRET`).
 
 **Paso 3: Testing de Pagos (Stripe en Vivo)**
 - Conectar Stripe al endpoint `/v1/webhooks/stripe`.
-- Hacer una compra de prueba simulada ($0.00 en modo Test de Stripe).
+- Hacer una compra de prueba simulada ($0.00 en modo Test).
 - Validar que el webhook inyecte la API Key en la BD con 100,000 créditos.
 
-**Paso 4: Growth / Infiltración en LangChain**
-- Usando el archivo `sdk/python/ses_langchain_compressor.py`, el agente debe ayudar al usuario a abrir un Pull Request oficial al repositorio público de `langchain-community` para adquirir usuarios gratis.
+**Paso 4: Growth / Infiltración en LangChain (Distribución)**
+- Usando el archivo `sdk/python/ses_langchain_compressor.py`, armar un Pull Request oficial al repositorio público de `langchain-community`.
+
+**Paso 5: Lanzamiento Comunitario (Marketing Indie Hacker)**
+- Preparar los posts de lanzamiento ("Build in Public") enfocados en "Construí el Reranker en Rust más rápido que Cohere".
+- **Canales objetivo:** 
+  1. Lanzamiento en **Indie Hackers** (contando el viaje de Solo Founder).
+  2. Post en **Hacker News (Show HN)** con benchmarks técnicos de latencia vs la competencia.
+  3. Campaña en **Product Hunt** (como "Token Optimizer API").
+  4. Hilos en **X (Twitter)**, Reddit (`r/LocalLLaMA`, `r/LangChain`).
