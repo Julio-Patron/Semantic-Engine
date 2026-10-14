@@ -11,12 +11,18 @@ logger = logging.getLogger(__name__)
 class LocalLLMProvider:
     """
     Servicio de inferencia local para RAG (Retrieval-Augmented Generation).
-    Soporta únicamente Ollama self-hosted para mantener el sistema offline-first.
+    Soporta Ollama self-hosted así como endpoints compatibles con OpenAI (como vLLM o LM Studio).
     """
 
     def __init__(self, model_override: Optional[str] = None):
-        self.model = model_override or OLLAMA_MODEL
-        self.ollama_url = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
+        self.model = model_override or os.getenv("OPENAI_MODEL", OLLAMA_MODEL)
+        self.is_openai_compatible = os.getenv("OPENAI_API_BASE") is not None
+
+        if self.is_openai_compatible:
+            self.base_url = os.getenv("OPENAI_API_BASE").rstrip('/')
+            self.api_key = os.getenv("OPENAI_API_KEY", "dummy")
+        else:
+            self.ollama_url = f"{OLLAMA_BASE_URL.rstrip('/')}/api/generate"
 
     async def generate_answer(self, query: str, context_docs: List[Dict[str, Any]]) -> str:
         if not context_docs:
@@ -26,13 +32,49 @@ class LocalLLMProvider:
         context_text = self._build_context(context_docs)
 
         try:
-            return await self._call_ollama(system_prompt, context_text, query)
+            return await self._call_llm(system_prompt, context_text, query)
         except Exception as exc:
-            logger.error("Local LLM provider failed: %s", exc)
-            return "No fue posible generar una respuesta con el proveedor LLM local. Verifique que Ollama esté en ejecución."
+            logger.error("LLM provider failed: %s", exc)
+            return "No fue posible generar una respuesta con el proveedor LLM local. Verifique su configuración y servicio."
+
+    async def _call_llm(self, system_prompt: str, context: str, query: str) -> str:
+        if self.is_openai_compatible:
+            return await self._call_openai(system_prompt, context, query)
+        else:
+            return await self._call_ollama(system_prompt, context, query)
+
+    async def _call_openai(self, system_prompt: str, context: str, query: str) -> str:
+        prompt = f"CONTEXT:\n{context}\n\nUSER QUERY: {query}" if context else query
+
+        payload = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.2,
+        }
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        async with httpx.AsyncClient(timeout=OLLAMA_TIMEOUT) as client:
+            response = await client.post(
+                f"{self.base_url}/chat/completions",
+                json=payload,
+                headers=headers
+            )
+            response.raise_for_status()
+            result = response.json()
+            choices = result.get("choices", [])
+            if not choices:
+                raise RuntimeError("OpenAI-compatible endpoint no devolvió contenido utilizable")
+            return choices[0].get("message", {}).get("content", "")
 
     async def _call_ollama(self, system_prompt: str, context: str, query: str) -> str:
-        prompt = f"{system_prompt}\n\nCONTEXT:\n{context}\n\nUSER QUERY: {query}"
+        prompt = f"{system_prompt}\n\nCONTEXT:\n{context}\n\nUSER QUERY: {query}" if context else f"{system_prompt}\n\nUSER QUERY: {query}"
         
         payload = {
             "model": self.model,

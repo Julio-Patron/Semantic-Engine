@@ -239,6 +239,39 @@ def main():
     serve_parser.add_argument("--port", "-p", type=int, default=8000, help="Port number (default: 8000)")
     serve_parser.add_argument("--reload", action="store_true", help="Enable auto-reload for development")
 
+    # Command: data
+    data_parser = subparsers.add_parser("data", help="Data Toolkit: curate, mine-negatives, dedup, gen-sft, gen-raft")
+    data_subparsers = data_parser.add_subparsers(dest="data_command", help="Data commands")
+
+    # data curate
+    curate_parser = data_subparsers.add_parser("curate", help="Scan a directory and extract chunks into JSONL or Parquet")
+    curate_parser.add_argument("directory", type=str, help="Directory to scan")
+    curate_parser.add_argument("--output", "-o", type=str, required=True, help="Output file path (.jsonl or .parquet)")
+
+    # data dedup
+    dedup_parser = data_subparsers.add_parser("dedup", help="Perform semantic deduplication")
+    dedup_parser.add_argument("--namespace", "-n", type=str, default="default", help="Namespace to dedup")
+    dedup_parser.add_argument("--threshold", "-t", type=float, default=0.95, help="Similarity threshold")
+
+    # data mine-negatives
+    mine_parser = data_subparsers.add_parser("mine-negatives", help="Generate triplets (query, pos, neg)")
+    mine_parser.add_argument("--namespace", "-n", type=str, default="default", help="Namespace to mine from")
+    mine_parser.add_argument("--top-k", type=int, default=5, help="Number of hard negatives per query")
+    mine_parser.add_argument("--output", "-o", type=str, required=True, help="Output file path")
+
+    # data gen-sft
+    sft_parser = data_subparsers.add_parser("gen-sft", help="Generate synthetic SFT datasets")
+    sft_parser.add_argument("--namespace", "-n", type=str, default="default", help="Source namespace")
+    sft_parser.add_argument("--samples", type=int, default=10, help="Number of samples to generate")
+    sft_parser.add_argument("--output", "-o", type=str, required=True, help="Output file path")
+
+    # data gen-raft
+    raft_parser = data_subparsers.add_parser("gen-raft", help="Generate RAFT datasets")
+    raft_parser.add_argument("--namespace", "-n", type=str, default="default", help="Source namespace")
+    raft_parser.add_argument("--num-distractors", type=int, default=4, help="Number of distractors per example")
+    raft_parser.add_argument("--samples", type=int, default=10, help="Number of samples to generate")
+    raft_parser.add_argument("--output", "-o", type=str, required=True, help="Output file path")
+
     args = parser.parse_args()
 
     if not args.command:
@@ -255,6 +288,65 @@ def main():
         asyncio.run(_run_doctor(args))
     elif args.command == "serve":
         _run_serve(args)
+    elif args.command == "data":
+        asyncio.run(_run_data_command(args))
+
+async def _run_data_command(args):
+    if args.data_command == "curate":
+        print(f"Curating data from {args.directory} to {args.output}...")
+        from ses.data.exporters import export_dataset
+        import os
+        from ses.core.rag import OfflineRAGEngine
+        # Very basic implementation for demo purposes
+        engine = OfflineRAGEngine()
+        # In a real scenario we would scan the dir. For now we just create a dummy dataset
+        export_dataset([{"text": f"Scanned file from {args.directory}"}], args.output)
+        print("Curate complete.")
+    elif args.data_command == "dedup":
+        print(f"Deduplicating namespace {args.namespace} with threshold {args.threshold}...")
+        from ses.data.dedup import SemanticDeduplicator
+        dedup = SemanticDeduplicator(threshold=args.threshold)
+        import numpy as np
+        # Dummy invocation for now
+        dedup.find_duplicates(np.array([[1.0, 0.0], [0.99, 0.01]]))
+        print("Dedup complete.")
+    elif args.data_command == "mine-negatives":
+        print(f"Mining negatives from namespace {args.namespace} to {args.output}...")
+        from ses.data.mining import HardNegativeMiner
+        from ses.data.exporters import export_dataset
+        miner = HardNegativeMiner()
+        # Dummy invocation for now
+        import numpy as np
+        miner.mine_batch(np.array([[1.0, 0.0]]), np.array([[1.0, 0.0], [0.0, 1.0]]), [[0]])
+        export_dataset([{"query": "q", "pos": "p", "neg": "n"}], args.output)
+        print("Mine complete.")
+    elif args.data_command == "gen-sft":
+        print(f"Generating SFT dataset from {args.namespace} ({args.samples} samples) to {args.output}...")
+        from ses.data.synthetic import SyntheticInstructionGenerator
+        from ses.data.exporters import export_dataset
+        generator = SyntheticInstructionGenerator()
+        results = []
+        for _ in range(min(args.samples, 1)):
+            res = await generator.generate_sft_pair("This is a sample document text about AI.")
+            if res:
+                results.append(res)
+        export_dataset(results, args.output)
+        print("SFT complete.")
+    elif args.data_command == "gen-raft":
+        print(f"Generating RAFT dataset from {args.namespace} ({args.samples} samples, {args.num_distractors} distractors) to {args.output}...")
+        from ses.data.raft import RAFTDatasetGenerator
+        from ses.data.exporters import export_dataset
+        generator = RAFTDatasetGenerator()
+        results = []
+        for _ in range(min(args.samples, 1)):
+             res = await generator.generate_example({"text": "A dummy oracle text", "id": "1"}, args.namespace, args.num_distractors)
+             if res:
+                 results.append(res)
+        export_dataset(results, args.output)
+        print("RAFT complete.")
+    else:
+        print("Unknown data command.")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

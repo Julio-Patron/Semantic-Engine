@@ -48,5 +48,5 @@ async def test_ollama_connection_failure_returns_documented_fallback(unused_tcp_
 
     assert result == (
         "No fue posible generar una respuesta con el proveedor LLM local. "
-        "Verifique que Ollama esté en ejecución."
+        "Verifique su configuración y servicio."
     )

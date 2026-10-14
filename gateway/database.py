@@ -114,8 +114,57 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
             """)
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS dataset_jobs (
+                job_id TEXT PRIMARY KEY,
+                tenant_id TEXT NOT NULL,
+                job_type TEXT NOT NULL,
+                status TEXT NOT NULL,
+                total_items INTEGER DEFAULT 0,
+                completed_items INTEGER DEFAULT 0,
+                output_file TEXT,
+                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+                completed_at TEXT
+            );
+            """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_date ON usage_logs(tenant_id, created_at);")
             conn.commit()
+
+    async def create_dataset_job(self, tenant_id: str, job_type: str, total_items: int) -> str:
+        job_id = str(uuid.uuid4())
+        async with self._get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO dataset_jobs (job_id, tenant_id, job_type, status, total_items) VALUES (?, ?, ?, ?, ?)",
+                (job_id, tenant_id, job_type, "running", total_items)
+            )
+            conn.commit()
+        return job_id
+
+    async def update_dataset_job(self, job_id: str, completed_items: int, status: str, output_file: Optional[str] = None) -> None:
+        async with self._get_db() as conn:
+            cursor = conn.cursor()
+            if status in ["completed", "failed"]:
+                completed_at = datetime.now(timezone.utc).isoformat()
+                cursor.execute(
+                    "UPDATE dataset_jobs SET completed_items = ?, status = ?, output_file = ?, completed_at = ? WHERE job_id = ?",
+                    (completed_items, status, output_file, completed_at, job_id)
+                )
+            else:
+                cursor.execute(
+                    "UPDATE dataset_jobs SET completed_items = ?, status = ? WHERE job_id = ?",
+                    (completed_items, status, job_id)
+                )
+            conn.commit()
+
+    async def get_dataset_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        async with self._get_db() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM dataset_jobs WHERE job_id = ?", (job_id,))
+            row = cursor.fetchone()
+            if row:
+                return dict(row)
+        return None
 
     async def bootstrap_admin_key(self, admin_key: str) -> None:
         def _bootstrap():
@@ -401,7 +450,53 @@ class PostgresDatabaseAdapter(DatabaseAdapter):
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
             """)
+            await conn.execute("""
+            CREATE TABLE IF NOT EXISTS dataset_jobs (
+                job_id UUID PRIMARY KEY,
+                tenant_id UUID NOT NULL,
+                job_type VARCHAR(50) NOT NULL,
+                status VARCHAR(50) NOT NULL,
+                total_items INT DEFAULT 0,
+                completed_items INT DEFAULT 0,
+                output_file TEXT,
+                created_at TIMESTAMPTZ DEFAULT NOW(),
+                completed_at TIMESTAMPTZ
+            );
+            """)
             await conn.execute("CREATE INDEX IF NOT EXISTS idx_usage_logs_tenant_date ON usage_logs(tenant_id, created_at);")
+
+    async def create_dataset_job(self, tenant_id: str, job_type: str, total_items: int) -> str:
+        job_id = str(uuid.uuid4())
+        async with self.pool.acquire() as conn:
+            t_uuid = uuid.UUID(tenant_id)
+            j_uuid = uuid.UUID(job_id)
+            await conn.execute(
+                "INSERT INTO dataset_jobs (job_id, tenant_id, job_type, status, total_items) VALUES ($1, $2, $3, $4, $5)",
+                j_uuid, t_uuid, job_type, "running", total_items
+            )
+        return job_id
+
+    async def update_dataset_job(self, job_id: str, completed_items: int, status: str, output_file: Optional[str] = None) -> None:
+        async with self.pool.acquire() as conn:
+            j_uuid = uuid.UUID(job_id)
+            if status in ["completed", "failed"]:
+                await conn.execute(
+                    "UPDATE dataset_jobs SET completed_items = $1, status = $2, output_file = $3, completed_at = NOW() WHERE job_id = $4",
+                    completed_items, status, output_file, j_uuid
+                )
+            else:
+                await conn.execute(
+                    "UPDATE dataset_jobs SET completed_items = $1, status = $2 WHERE job_id = $3",
+                    completed_items, status, j_uuid
+                )
+
+    async def get_dataset_job(self, job_id: str) -> Optional[Dict[str, Any]]:
+        async with self.pool.acquire() as conn:
+            j_uuid = uuid.UUID(job_id)
+            row = await conn.fetchrow("SELECT * FROM dataset_jobs WHERE job_id = $1", j_uuid)
+            if row:
+                return dict(row)
+        return None
 
     async def bootstrap_admin_key(self, admin_key: str) -> None:
         key_hash = hashlib.sha256(admin_key.encode()).hexdigest()

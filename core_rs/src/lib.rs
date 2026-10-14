@@ -164,11 +164,167 @@ fn cosine_similarity_search_with_threshold(
         .map_err(as_python_value_error)
 }
 
+#[cfg(feature = "python")]
+#[pyfunction]
+fn batch_hard_negative_mining(
+    query_vectors: PyReadonlyArray2<'_, f32>,
+    document_vectors: PyReadonlyArray2<'_, f32>,
+    positive_indices: Vec<Vec<usize>>,
+    top_k: usize,
+) -> PyResult<Vec<Vec<(usize, f32)>>> {
+    let queries = query_vectors
+        .as_slice()
+        .map_err(|_| PyValueError::new_err("query_vectors must be C-contiguous"))?;
+    let documents = document_vectors
+        .as_slice()
+        .map_err(|_| PyValueError::new_err("document_vectors must be C-contiguous"))?;
+
+    let q_shape = query_vectors.shape();
+    let d_shape = document_vectors.shape();
+
+    if q_shape[1] != d_shape[1] {
+        return Err(PyValueError::new_err(format!(
+            "query and document vectors must have same dimensions; {} != {}",
+            q_shape[1], d_shape[1]
+        )));
+    }
+
+    let dim = q_shape[1];
+    let num_queries = q_shape[0];
+    let num_docs = d_shape[0];
+
+    if num_docs == 0 {
+        return Ok(vec![vec![]; num_queries]);
+    }
+
+    let mut batch_results = Vec::with_capacity(num_queries);
+
+    for q_idx in 0..num_queries {
+        let query_offset = q_idx * dim;
+        let query_vec = &queries[query_offset..query_offset + dim];
+
+        let pos_set: std::collections::HashSet<usize> = positive_indices
+            .get(q_idx)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .collect();
+
+        let mut scores = Vec::with_capacity(num_docs);
+
+        let query_norm = query_vec
+            .iter()
+            .map(|value| value * value)
+            .sum::<f32>()
+            .sqrt();
+
+        for d_idx in 0..num_docs {
+            if pos_set.contains(&d_idx) {
+                continue;
+            }
+
+            let doc_offset = d_idx * dim;
+            let doc_vec = &documents[doc_offset..doc_offset + dim];
+
+            let (dot_product, doc_squared_norm) = query_vec
+                .iter()
+                .zip(doc_vec)
+                .fold((0.0_f32, 0.0_f32), |(dot, norm), (q, d)| {
+                    (dot + q * d, norm + d * d)
+                });
+
+            let doc_norm = doc_squared_norm.sqrt();
+            let score = if query_norm > 0.0 && doc_norm > 0.0 {
+                dot_product / (query_norm * doc_norm)
+            } else {
+                0.0
+            };
+
+            scores.push((d_idx, score));
+        }
+
+        scores.sort_by(|left, right| right.1.total_cmp(&left.1));
+        scores.truncate(top_k);
+        batch_results.push(scores);
+    }
+
+    Ok(batch_results)
+}
+
+#[cfg(feature = "python")]
+#[pyfunction]
+fn semantic_dedup(
+    document_vectors: PyReadonlyArray2<'_, f32>,
+    threshold: f32,
+) -> PyResult<Vec<(usize, usize, f32)>> {
+    let documents = document_vectors
+        .as_slice()
+        .map_err(|_| PyValueError::new_err("document_vectors must be C-contiguous"))?;
+
+    let shape = document_vectors.shape();
+    let num_docs = shape[0];
+    let dim = shape[1];
+
+    if num_docs < 2 {
+        return Ok(vec![]);
+    }
+
+    // Precompute norms
+    let mut norms = Vec::with_capacity(num_docs);
+    for d_idx in 0..num_docs {
+        let offset = d_idx * dim;
+        let doc_vec = &documents[offset..offset + dim];
+        let norm = doc_vec
+            .iter()
+            .map(|value| value * value)
+            .sum::<f32>()
+            .sqrt();
+        norms.push(norm);
+    }
+
+    let mut duplicate_pairs = Vec::new();
+
+    for i in 0..num_docs {
+        let i_offset = i * dim;
+        let i_vec = &documents[i_offset..i_offset + dim];
+        let i_norm = norms[i];
+
+        if i_norm == 0.0 {
+            continue;
+        }
+
+        for j in (i + 1)..num_docs {
+            let j_offset = j * dim;
+            let j_vec = &documents[j_offset..j_offset + dim];
+            let j_norm = norms[j];
+
+            if j_norm == 0.0 {
+                continue;
+            }
+
+            let dot_product = i_vec
+                .iter()
+                .zip(j_vec)
+                .fold(0.0_f32, |acc, (a, b)| acc + a * b);
+
+            let score = dot_product / (i_norm * j_norm);
+
+            if score >= threshold {
+                duplicate_pairs.push((i, j, score));
+            }
+        }
+    }
+
+    Ok(duplicate_pairs)
+}
+
 /// M\u00f3dulo Python expuesto
 #[cfg(feature = "python")]
 #[pymodule]
 fn jas_vector_core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(cosine_similarity_search, m)?)?;
+    m.add_function(wrap_pyfunction!(batch_hard_negative_mining, m)?)?;
+    m.add_function(wrap_pyfunction!(semantic_dedup, m)?)?;
     m.add_function(wrap_pyfunction!(cosine_similarity_search_numpy, m)?)?;
     m.add_function(wrap_pyfunction!(batch_cosine_search, m)?)?;
     m.add_function(wrap_pyfunction!(

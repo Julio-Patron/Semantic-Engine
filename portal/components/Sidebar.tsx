@@ -10,7 +10,8 @@ import {
   BarChart3, 
   KeyRound, 
   FileBox, 
-  Settings 
+  Settings,
+  BrainCircuit
 } from "lucide-react";
 
 const navItems = [
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/keys", icon: KeyRound, label: "API Keys" },
   { href: "/reports", icon: FileBox, label: "Reports" },
+  { href: "/studio", icon: BrainCircuit, label: "Training Studio" },
   { href: "/settings", icon: Settings, label: "Settings" },
 ];
 
