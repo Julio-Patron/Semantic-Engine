@@ -75,4 +75,4 @@ res, err := client.IngestFile(ctx, "contracts", "agreement.pdf", file, map[strin
 
 ## Licensing
 
-Distributed under **Dual-License** terms (`GPL-3.0-only` for open-source projects, or **Commercial License** for proprietary closed-source applications). See [COMMERCIAL_LICENSE.md](../../COMMERCIAL_LICENSE.md).
+Distributed under the `GPL-3.0-only` license. See [LICENSE](../../LICENSE).

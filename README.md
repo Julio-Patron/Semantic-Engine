@@ -6,14 +6,14 @@
   [![Crates.io](https://img.shields.io/crates/v/jas_vector_core.svg)](https://crates.io/crates/jas_vector_core)
   [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
   [![CI](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml)
-  [![License](https://img.shields.io/badge/License-Dual%20(GPLv3%20%7C%20Commercial)-blue.svg)](COMMERCIAL_LICENSE.md)
+  [![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
   <p>
     <a href="https://elbuilder77.github.io/Semantic-Engine/">Official Website</a> •
     <a href="#quickstart">Quickstart</a> •
     <a href="#enterprise-deployment">Enterprise Stack</a> •
     <a href="#official-sdks">SDKs</a> •
-    <a href="#commercial-licensing--white-label-editions">Commercial Licensing</a>
+    <a href="#license">License</a>
   </p>
 </div>
 
@@ -161,19 +161,6 @@ resp, _ := client.Search(ctx, ses.SearchRequest{
 
 ---
 
-## Commercial Licensing & White-Label Editions
+## License
 
-SES is distributed under a **Dual-License** model. Choose the license that matches your deployment:
-
-| Feature / Right | Community Edition (`$0`) | Commercial License (`$149 USD`) | Enterprise White-Label Kit (`$299 USD`) |
-| :--- | :---: | :---: | :---: |
-| **License Terms** | **GPL-3.0-only** (Open-Source Copyleft) | **Perpetual Commercial Exemption** (1 Org) | **Perpetual Agency / Multi-Client License** |
-| **Closed-Source / Proprietary Use** | ❌ Requires disclosing source under GPLv3 | ✅ **Permitted (No GPLv3 obligations)** | ✅ **Permitted across unlimited clients** |
-| **White-Label Branding (`.env`)** | ❌ | Internal use | ✅ **Rebrand PDF Reports & Next.js Portal** |
-| **Turnkey Enterprise Stack** | Core + CLI | Core + Gateway + SDKs | **Full Stack + White-Label Quickstart Kit** |
-| **Payment & Support Model** | Free / Community | **One-Time Payment** (*Provided As-Is*) | **One-Time Payment** (*Provided As-Is*) |
-
-- **Option 1 — Commercial Dual-License ($149 USD):** [Purchase via Stripe Checkout](https://buy.stripe.com/3cI14odkL9TS1Zy91ke3e00)
-- **Option 2 — Enterprise White-Label Boilerplate & Agency Kit ($299 USD):** [Purchase via Stripe Checkout](https://buy.stripe.com/cNi8wQ3KbaXW7jSb9se3e01)
-
-See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for complete legal terms.
+SES is distributed under the [GNU General Public License v3.0](LICENSE) (`GPL-3.0-only`).

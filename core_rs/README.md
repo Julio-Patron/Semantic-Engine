@@ -4,7 +4,7 @@ High-performance vector cosine similarity search and Top-K re-ranking engine wri
 
 [![Crates.io](https://img.shields.io/crates/v/jas_vector_core.svg)](https://crates.io/crates/jas_vector_core)
 [![PyPI](https://img.shields.io/pypi/v/ses-core.svg)](https://pypi.org/project/ses-core/)
-[![License](https://img.shields.io/badge/License-Dual%20(GPLv3%20%7C%20Commercial)-blue.svg)](https://github.com/elbuilder77/Semantic-Engine/blob/main/COMMERCIAL_LICENSE.md)
+[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/elbuilder77/Semantic-Engine/blob/main/LICENSE)
 
 ---
 
@@ -58,12 +58,6 @@ results = jas_vector_core.cosine_similarity_search_numpy(query, docs, top_k=5)
 
 ---
 
-## Dual Licensing (GPL-3.0-only & Commercial Exemption)
+## License
 
-`jas_vector_core` is distributed under a **Dual-License** model:
-
-1. **Open Source (`GPL-3.0-only` — Free):** Free for open-source software complying with GPLv3 copyleft terms.
-2. **Commercial Dual-License Exemption ($149 USD One-Time):** [Purchase via Stripe](https://buy.stripe.com/3cI14odkL9TS1Zy91ke3e00) — Perpetual license for 1 organization to link or embed `jas_vector_core` and `ses-core` in closed-source proprietary software without GPLv3 source disclosure obligations.
-3. **Enterprise White-Label Suite ($299 USD One-Time):** [Purchase via Stripe](https://buy.stripe.com/cNi8wQ3KbaXW7jSb9se3e01) — Unlimited client deployments for agencies and consultancies + full SES Enterprise Gateway, Next.js 16 Portal, and White-Label PDF Audit Engine.
-
-See [COMMERCIAL_LICENSE.md](https://github.com/elbuilder77/Semantic-Engine/blob/main/COMMERCIAL_LICENSE.md) for complete legal terms.
+GPL-3.0-only

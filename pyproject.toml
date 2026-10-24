@@ -46,7 +46,6 @@ ses = "ses.cli:main"
 [project.urls]
 Homepage = "https://elbuilder77.github.io/Semantic-Engine/"
 Documentation = "https://elbuilder77.github.io/Semantic-Engine/#quickstart"
-"Commercial License" = "https://elbuilder77.github.io/Semantic-Engine/#pricing"
 Repository = "https://github.com/elbuilder77/Semantic-Engine.git"
 
 [tool.maturin]
