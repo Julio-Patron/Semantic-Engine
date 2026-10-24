@@ -171,7 +171,7 @@ models/
 *.pt
 *.pth
 
-# Editors and assistant-local state
+# Editors, internal strategy docs, and commercial packaging tooling
 .idea/
 .vscode/
 .fleet/
@@ -184,13 +184,16 @@ CLAUDE.md
 /ROADMAP.md
 /TASKS.md
 /IMPLEMENTATION_PLAN.md
+/ESTADO_E_INVENTARIO*.md
+/PLAN_PRODUCTIZACION*.md
+/WHITE_LABEL_QUICKSTART.md
+/scripts/build_commercial_assets.py
+/scripts/setup_stripe_links.py
 /parse_roadmap.py
 /ses-agent-system/
 /poetry.lock
 *.swp
 *.swo
-
-# Desktop and operating-system metadata
 
 # Desktop and operating-system metadata
 .DS_Store
