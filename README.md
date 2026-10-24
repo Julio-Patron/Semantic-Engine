@@ -206,6 +206,12 @@ cargo test --manifest-path core_rs/Cargo.toml
 cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
 ~~~
 
-## Licencia
+## 💼 Licenciamiento Dual (GPLv3 & Licencia Comercial / White-Label)
 
-SES Core se distribuye bajo GPLv3.
+SES opera bajo un modelo **Dual-License**:
+
+1. **Open Source (`GPL-3.0-only` — Gratis):** Para proyectos de código abierto compatibles con las obligaciones copyleft de [LICENSE](LICENSE).
+2. **Opción 1 — Exención Comercial GPLv3 ($149 USD Pago Único):** Permite integrar `ses-core`, `jas_vector_core` y el Gateway en software propietario cerrado sin obligación de liberar tu código fuente.
+3. **Opción 2 — Enterprise White-Label Boilerplate & Agency Kit ($299 USD Pago Único):** Licencia multi-cliente para agencias/consultoras + personalización White-Label de los dossieres PDF de auditoría (`SES_BRAND_SHORT`, `SES_BRAND_FOOTER` en `.env`), Portal Next.js 16 y Gateway PostgreSQL.
+
+👉 **[Adquirir Licencia Comercial o White-Label Kit (Stripe / Gumroad)](https://elbuilder77.github.io/Semantic-Engine/#pricing)** *(Entrega digital inmediata, modalidad "As-Is" sin soporte ni cargos recurrentes. Ver [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)).*

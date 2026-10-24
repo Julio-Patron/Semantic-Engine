@@ -346,10 +346,10 @@ class SESHandler(FileSystemEventHandler):
 class SESWatcher:
     """Manages the Observer and SESHandler lifecycle."""
 
-    def __init__(self, directories: List[str] = None):
+    def __init__(self, directories: List[str] = None, namespace: Optional[str] = None):
         self.directories = directories or []
         self.observer = Observer()
-        self.namespace = PERSONAL_NAMESPACE or "personal_default"
+        self.namespace = namespace or PERSONAL_NAMESPACE or "personal_default"
         self.service = None
         self.loop = None
         self._handler: Optional[SESHandler] = None

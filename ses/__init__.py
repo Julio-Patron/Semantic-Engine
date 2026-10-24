@@ -54,12 +54,16 @@ async def search(query: str, namespace: str = "default", top_k: int = 5, generat
         results = await ses.search("termination conditions", namespace="legal")
     """
     engine = get_engine()
-    return await engine.search(
+    response = await engine.search(
         namespace=namespace,
         query=query,
         top_k=top_k,
-        generate_answer=generate_answer
     )
+    if generate_answer and isinstance(response, dict):
+        from .core.llm import LocalLLMProvider
+        llm = LocalLLMProvider()
+        response["answer"] = await llm.generate_answer(query, response.get("results", []))
+    return response
 
 
 async def ingest(file_path: str, namespace: str = "default", metadata: Optional[Dict[str, Any]] = None):

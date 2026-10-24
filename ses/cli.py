@@ -87,23 +87,28 @@ async def _run_search(args):
     engine = _get_engine()
     start_time = time.perf_counter()
     
-    results = await engine.search(
+    response = await engine.search(
         namespace=namespace,
         query=query,
         top_k=top_k,
-        generate_answer=generate_answer
     )
     elapsed = (time.perf_counter() - start_time) * 1000
 
+    results = response.get("results", []) if isinstance(response, dict) else (response or [])
     if not results:
         print("⚠️ No matching documents found.")
         return
 
     print(f"⚡ Found {len(results)} results in {elapsed:.1f}ms:\n")
     for i, r in enumerate(results, 1):
-        score = getattr(r, "score", 0.0)
-        content = getattr(r, "content", "")
-        meta = getattr(r, "metadata", {}) or {}
+        if isinstance(r, dict):
+            score = float(r.get("score", 0.0))
+            content = str(r.get("text") or r.get("text_snippet") or r.get("content") or "")
+            meta = r.get("metadata", {}) or {}
+        else:
+            score = float(getattr(r, "score", 0.0))
+            content = str(getattr(r, "content", "") or getattr(r, "text", ""))
+            meta = getattr(r, "metadata", {}) or {}
         fname = meta.get("filename", "unknown")
         src = meta.get("source_path", fname)
         print(f"  [{i}] Score: {score:.4f} | Source: {src}")
@@ -111,10 +116,11 @@ async def _run_search(args):
         print(f"      \"{snippet}...\"\n")
 
     if generate_answer:
-        # If local LLM generated an answer
         print("─" * 60)
         print("🧠 Synthesized Answer:")
-        answer = getattr(engine, "last_generated_answer", None)
+        from ses.core.llm import LocalLLMProvider
+        llm = LocalLLMProvider()
+        answer = await llm.generate_answer(query, results)
         if answer:
             print(f"{answer}\n")
         print("─" * 60)
@@ -185,7 +191,7 @@ async def _run_doctor(args):
     try:
         from ses.core.llm import LocalLLMProvider
         llm = LocalLLMProvider()
-        print(f"  ✓ Local LLM Provider: Configured ({llm.model_name} at {llm.base_url})")
+        print(f"  ✓ Local LLM Provider: Configured ({llm.model} at {llm.ollama_url})")
     except Exception as e:
         print(f"  ⚠️ Local LLM Provider: {e}")
 
@@ -198,7 +204,7 @@ def _run_serve(args):
     print(f"🌐 Starting SES Gateway on http://{host}:{port}...")
     try:
         import uvicorn
-        uvicorn.run("gateway.main:app", host=host, port=port, reload=args.reload)
+        uvicorn.run("gateway.server:app", host=host, port=port, reload=args.reload)
     except ImportError:
         print("❌ Error: Gateway dependencies missing. Run `pip install ses-core[server]` to install.", file=sys.stderr)
         sys.exit(1)

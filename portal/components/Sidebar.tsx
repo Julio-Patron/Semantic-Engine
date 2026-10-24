@@ -25,6 +25,8 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const brandName = process.env.NEXT_PUBLIC_BRAND_NAME || "SES Gateway";
+  const brandEdition = process.env.NEXT_PUBLIC_BRAND_EDITION || "Enterprise Edition";
 
   return (
     <aside className="w-64 border-r border-white/10 bg-slate-950/50 backdrop-blur-xl h-screen sticky top-0 flex flex-col hidden md:flex">
@@ -34,7 +36,7 @@ export function Sidebar() {
             <div className="w-4 h-4 bg-white rounded-sm" />
           </div>
           <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 bg-clip-text text-transparent">
-            SES Gateway
+            {brandName}
           </h1>
         </div>
       </div>
@@ -70,7 +72,7 @@ export function Sidebar() {
 
       <div className="p-4 mt-auto">
         <div className="p-4 rounded-xl bg-gradient-to-br from-blue-900/40 to-slate-900 border border-blue-800/30">
-          <p className="text-xs font-medium text-blue-200 mb-1">Enterprise Edition</p>
+          <p className="text-xs font-medium text-blue-200 mb-1">{brandEdition}</p>
           <p className="text-[10px] text-slate-400">Version 2.0.0</p>
         </div>
       </div>

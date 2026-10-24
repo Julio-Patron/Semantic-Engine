@@ -203,7 +203,8 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
         self.set_font(self._font_family, "B", 8)
         self.set_text_color(*COLOR_PRIMARY)
         self.set_xy(MARGIN_LEFT + 1.5, 8)
-        self.cell(11, 5, "SES", align="C")
+        brand_short = os.getenv("SES_BRAND_SHORT", "SES").strip() or "SES"
+        self.cell(11, 5, _sanitize_text(brand_short[:5]), align="C")
 
         # Title text
         self.set_text_color(*COLOR_WHITE)
@@ -250,7 +251,8 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
         self.set_y(-15)
         self.set_font(self._font_family, "", 7)
         self.set_text_color(*COLOR_GRAY_TEXT)
-        self.cell(0, 5, f"SES Enterprise Gateway  |  {self._classification}", align="L")
+        brand_footer = os.getenv("SES_BRAND_FOOTER", "SES Enterprise Gateway").strip() or "SES Enterprise Gateway"
+        self.cell(0, 5, f"{_sanitize_text(brand_footer)}  |  {self._classification}", align="L")
 
         # Page X of {nb}
         self.set_font(self._font_family, "", 7)
@@ -325,6 +327,7 @@ class EnterpriseReportPDF(FPDF if FPDF is not None else object):
 
     def draw_body_text(self, text: str, size: int = 9):
         """Render a multi-cell paragraph of body text."""
+        self.set_x(MARGIN_LEFT)
         self.set_font(self._font_family, "", size)
         self.set_text_color(*COLOR_BLACK)
         self.multi_cell(0, 5, _sanitize_text(text))

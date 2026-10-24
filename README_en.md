@@ -268,8 +268,12 @@ LLM latency, and its numbers are not an SLA.
 - [portal/README.md](portal/README.md): Portal routes and validation.
 - [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md): watcher contract and limits.
 
-## License
+## Dual Licensing (GPLv3 & Commercial / White-Label Boilerplate)
 
-SES Core is distributed under GPLv3. Managed offerings, SLAs, and regulatory
-certifications are future commercial objectives, not properties demonstrated
-by the current repository state.
+SES is distributed under a **Dual-License** model:
+
+1. **Open Source (`GPL-3.0-only` — Free):** For open-source projects complying with [LICENSE](LICENSE).
+2. **Option 1 — Commercial Dual-License Exemption ($149 USD One-Time):** Embed `ses-core`, `jas_vector_core`, and the Gateway inside closed-source proprietary software without GPLv3 disclosure obligations.
+3. **Option 2 — Enterprise White-Label Boilerplate & Agency Kit ($299 USD One-Time):** Unlimited client deployments for agencies/consultancies + environment-driven PDF report white-labeling (`SES_BRAND_SHORT`, `SES_BRAND_FOOTER`), Next.js 16 Admin Portal, and PostgreSQL multi-tenant adapter.
+
+👉 **[Purchase Commercial License or White-Label Kit (Stripe / Gumroad)](https://elbuilder77.github.io/Semantic-Engine/#pricing)** *(Instant digital delivery, provided strictly "As-Is" without support or recurring fees. See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)).*

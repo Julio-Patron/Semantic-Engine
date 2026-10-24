@@ -46,6 +46,27 @@ def test_custom_font_without_italic_uses_regular_style():
 
     set_font.assert_called_once_with("SESFont", "", 8)
 
+
+def test_white_label_branding_env_override(tmp_path):
+    if FPDF is None:
+        pytest.skip("fpdf2 not installed")
+
+    with patch.dict(
+        os.environ,
+        {
+            "SES_BRAND_SHORT": "ACME",
+            "SES_BRAND_FOOTER": "ACME LegalTech Division - Strictly Confidential",
+        },
+    ):
+        pdf = EnterpriseReportPDF(title="LEGAL AUDIT REPORT")
+        pdf.alias_nb_pages()
+        pdf.add_page()
+        out_file = tmp_path / "branded.pdf"
+        pdf.output(str(out_file))
+        assert out_file.exists()
+        assert out_file.stat().st_size > 500
+
+
 def test_generate_usage_report_pdf(tmp_path):
     output_dir = tmp_path / "reports"
     service = ReportService(output_dir=str(output_dir))

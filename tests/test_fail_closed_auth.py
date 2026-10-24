@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 # Set DEBUG=false for fail-closed tests
 os.environ["DEBUG"] = "false"
 os.environ["GATEWAY_ADMIN_KEY"] = "secure_admin_key_that_is_long_enough_for_production"
-os.environ["GATEWAY_CORS_ORIGINS"] = "http://localhost:3000"
+os.environ["GATEWAY_CORS_ORIGINS"] = "http://localhost:3000,http://127.0.0.1:3000"
 os.environ["QDRANT_API_KEY"] = "test_key"
 os.environ["REDIS_PASSWORD"] = "test_pass"
 

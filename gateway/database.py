@@ -78,6 +78,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
             CREATE TABLE IF NOT EXISTS tenants (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,
+                namespace TEXT,
                 plan_tier TEXT DEFAULT 'developer',
                 rate_limit_per_minute INTEGER NOT NULL DEFAULT 60,
                 is_active INTEGER DEFAULT 1,
@@ -85,6 +86,10 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 updated_at TEXT DEFAULT CURRENT_TIMESTAMP
             );
             """)
+            try:
+                cursor.execute("ALTER TABLE tenants ADD COLUMN namespace TEXT;")
+            except sqlite3.OperationalError:
+                pass
 
             # 2. API Keys
             cursor.execute("""
@@ -153,7 +158,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT k.id as key_id, k.key_hash, k.key_prefix, k.status, 
-                           t.id as tenant_id, t.name as tenant_name, t.plan_tier, 
+                           t.id as tenant_id, t.name as tenant_name, t.namespace as tenant_namespace, t.plan_tier, 
                            t.rate_limit_per_minute as rate_limit, t.is_active
                     FROM api_keys k
                     JOIN tenants t ON k.tenant_id = t.id
@@ -175,7 +180,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                     "id": row["key_id"],
                     "key_prefix": row["key_prefix"],
                     "name": row["tenant_name"],
-                    "namespace": f"tenant_{row['tenant_id'][:8]}",  # Isolates namespace per tenant id
+                    "namespace": row["tenant_namespace"] or f"tenant_{row['tenant_id'][:8]}",  # Isolates namespace per tenant id
                     "rate_limit": row["rate_limit"],
                     "role": "admin" if row["plan_tier"] == "enterprise" else "client",
                     "tenant_id": row["tenant_id"]
@@ -192,12 +197,13 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
             key_id = str(uuid.uuid4())
             
             plan = "enterprise" if role == "admin" else "pro"
+            resolved_namespace = (namespace or "").strip() or f"tenant_{tenant_id[:8]}"
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
                 cursor.execute(
-                    "INSERT INTO tenants (id, name, plan_tier, rate_limit_per_minute) VALUES (?, ?, ?, ?)",
-                    (tenant_id, name, plan, rate_limit)
+                    "INSERT INTO tenants (id, name, namespace, plan_tier, rate_limit_per_minute) VALUES (?, ?, ?, ?, ?)",
+                    (tenant_id, name, resolved_namespace, plan, rate_limit)
                 )
                 cursor.execute(
                     "INSERT INTO api_keys (id, tenant_id, key_hash, key_prefix, status) VALUES (?, ?, ?, ?, ?)",
@@ -213,7 +219,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                         "tenant_id": tenant_id,
                         "key_prefix": key_prefix,
                         "name": name,
-                        "namespace": f"tenant_{tenant_id[:8]}",
+                        "namespace": resolved_namespace,
                         "rate_limit": rate_limit,
                         "role": role,
                         "created_at": int(datetime.now(timezone.utc).timestamp())
@@ -242,7 +248,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT k.id as key_id, k.key_prefix, k.status, k.created_at,
-                           t.id as tenant_id, t.name as tenant_name, t.plan_tier, t.rate_limit_per_minute
+                           t.id as tenant_id, t.name as tenant_name, t.namespace as tenant_namespace, t.plan_tier, t.rate_limit_per_minute
                     FROM api_keys k
                     JOIN tenants t ON k.tenant_id = t.id
                     WHERE k.status = 'active'
@@ -254,7 +260,7 @@ class SQLiteDatabaseAdapter(DatabaseAdapter):
                     keys.append({
                         "key": row["key_prefix"] + "...",  # Do not return full hashes/keys in listing
                         "name": row["tenant_name"],
-                        "namespace": f"tenant_{row['tenant_id'][:8]}",
+                        "namespace": row["tenant_namespace"] or f"tenant_{row['tenant_id'][:8]}",
                         "rate_limit": row["rate_limit_per_minute"],
                         "role": "admin" if row["plan_tier"] == "enterprise" else "client",
                         "created_at": created_epoch

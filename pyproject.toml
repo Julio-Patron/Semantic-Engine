@@ -43,8 +43,9 @@ server = ["fastapi>=0.104.0", "uvicorn>=0.23.2", "fpdf2>=2.7.4", "httpx>=0.24.1"
 ses = "ses.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/elbuilder77/Semantic-Engine"
-Documentation = "https://github.com/elbuilder77/Semantic-Engine#readme"
+Homepage = "https://elbuilder77.github.io/Semantic-Engine/"
+Documentation = "https://elbuilder77.github.io/Semantic-Engine/#quickstart"
+"Commercial License" = "https://elbuilder77.github.io/Semantic-Engine/#pricing"
 Repository = "https://github.com/elbuilder77/Semantic-Engine.git"
 
 [tool.maturin]

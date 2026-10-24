@@ -37,5 +37,8 @@ docs = np.array([[0.0, 1.0], [1.0, 0.0]], dtype=np.float32)
 results = jas_vector_core.cosine_similarity_search_numpy(query, docs, top_k=5)
 ```
 
-## License
-GPL-3.0-only
+## Dual Licensing (GPL-3.0-only & Commercial Exemption)
+
+`jas_vector_core` is dual-licensed:
+- **Open Source:** Free under `GPL-3.0-only` for open-source projects.
+- **Commercial License (One-Time Buyout, As-Is):** For linking or embedding into proprietary closed-source applications without GPLv3 copyleft obligations, purchase a perpetual Commercial License at **[elbuilder77.github.io/Semantic-Engine/#pricing](https://elbuilder77.github.io/Semantic-Engine/#pricing)**.

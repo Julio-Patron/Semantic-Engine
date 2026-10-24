@@ -4,8 +4,12 @@ import { Sidebar } from "@/components/Sidebar";
 import { ToastProvider } from "@/components/Toast";
 
 export const metadata: Metadata = {
-  title: "SES Enterprise Gateway | Developer Portal",
-  description: "Manage your RAG engine, documents, and analytics.",
+  title:
+    process.env.NEXT_PUBLIC_PORTAL_TITLE ||
+    "SES Enterprise Gateway | Developer Portal",
+  description:
+    process.env.NEXT_PUBLIC_PORTAL_DESCRIPTION ||
+    "Manage your RAG engine, documents, and analytics.",
 };
 
 export default function RootLayout({
