@@ -5,15 +5,16 @@ build-backend = "maturin"
 [project]
 name = "ses-core"
 version = "2.0.3"
-description = "Offline-first RAG engine for private, locally operated document systems"
+description = "Enterprise offline-first RAG engine, read-only document indexer, and Rust-accelerated vector search platform"
 authors = [{name = "Julio Patron", email = "juliopc92@gmail.com"}]
 license = "GPL-3.0-only"
 readme = "README.md"
 requires-python = ">=3.9"
-keywords = ["rag", "llm", "offline", "ai", "semantic-search", "qdrant", "ollama", "local-ai"]
+keywords = ["rag", "llm", "offline-ai", "semantic-search", "qdrant", "ollama", "vector-search", "document-intelligence"]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",

@@ -1,44 +1,44 @@
-# SES Enterprise Portal
+# SES Enterprise Admin Portal
 
-Next.js 16 administration portal for the FastAPI Gateway in `../gateway`.
-The portal is a browser client: it does not embed an API key at build time.
-The configured Gateway URL and administrator key are stored in the current
-browser's `localStorage` under `ses_api_url` and `ses_api_key`.
+The **SES Enterprise Admin Portal** (`portal/`) is a modern Next.js 16 web application for managing the **SES Enterprise Gateway**, monitoring service health, executing RAG queries, managing multi-tenant API keys, and exporting corporate PDF audit reports.
 
-## Local validation
+---
 
-From the repository root:
+## Key Features & Routes
 
-```powershell
-npm ci --prefix portal
-npm --prefix portal run lint
-npm --prefix portal run build
-npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
+- **`/dashboard`** — Real-time cluster health status (Gateway, Qdrant, Redis, Ollama) and request metrics.
+- **`/search`** — Interactive RAG search console with Rust acceleration indicators and 1-click Evidence PDF export.
+- **`/documents`** — Drag-and-drop document upload (`PDF`, `DOCX`, `XLSX`, `CSV`, `TXT`, `MD`), namespace inspection, and deletion.
+- **`/keys`** — Multi-tenant API key provisioning, namespace assignment, rate-limit configuration, and instant revocation.
+- **`/analytics`** — Request volume, error rate, latency telemetry, and per-key usage breakdown.
+- **`/reports`** — Instant generation and download of Corporate Usage and System Health PDF dossiers.
+- **`/settings`** — Browser-side Gateway URL and API key connection management (`localStorage`).
+
+---
+
+## Zero-Code White-Label Configuration
+
+Customize the Portal's brand identity via environment variables without modifying React components:
+
+```ini
+NEXT_PUBLIC_BRAND_NAME=ACME AI Portal
+NEXT_PUBLIC_BRAND_EDITION=Enterprise Suite
+NEXT_PUBLIC_PORTAL_TITLE=ACME AI | Document Intelligence Console
+NEXT_PUBLIC_SES_API_URL=http://localhost:8000
 ```
 
-Open `http://127.0.0.1:3000/settings`, enter the Gateway URL and a rotated
-administrator key, then use **Test Connection**. That check calls both the
-public health endpoint and the administrator analytics endpoint, so it
-validates connectivity and privileges.
+---
 
-The default Gateway URL is `http://localhost:8000`. A non-secret alternative
-can be embedded at build time with `NEXT_PUBLIC_SES_API_URL`; never place an API
-key in a `NEXT_PUBLIC_` variable.
+## Development & Production Build
 
-## Implemented routes
+```bash
+# Install dependencies
+npm ci --prefix portal
 
-- `/dashboard`: persisted analytics and service health.
-- `/search`: semantic search, answer generation, actual Rust-path status, and
-  evidence PDF export.
-- `/documents`: file ingestion, document listing, and deletion.
-- `/keys`: administrator key creation, one-time display, and revocation.
-- `/analytics`: persisted request aggregates and recent-log timeline.
-- `/reports`: usage and health PDF downloads.
-- `/settings`: browser-local Gateway configuration.
+# Run development server on http://127.0.0.1:3000
+npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
 
-## Operational boundary
-
-`npm run build` proves the frontend compiles and prerenders. Full feature
-validation also requires the Gateway plus its configured Qdrant, Redis, and
-Ollama dependencies. A degraded or unavailable backend is surfaced by the
-individual pages; it is not replaced with sample data.
+# Run test suite and production build
+npm --prefix portal run test
+npm --prefix portal run build
+```

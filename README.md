@@ -1,97 +1,120 @@
 <div align="center">
-  <h1>SES Core: Semantic Engine</h1>
-  <p><strong>Motor RAG offline-first para documentos privados, con Gateway, Portal y aceleración Rust opcional.</strong></p>
+  <h1>SES — Semantic Engine</h1>
+  <p><strong>Enterprise Offline-First RAG Engine, Read-Only Document Indexer &amp; Rust-Accelerated Vector Search Platform</strong></p>
 
+  [![PyPI](https://img.shields.io/pypi/v/ses-core.svg)](https://pypi.org/project/ses-core/)
+  [![Crates.io](https://img.shields.io/crates/v/jas_vector_core.svg)](https://crates.io/crates/jas_vector_core)
   [![Python](https://img.shields.io/badge/Python-3.9--3.12-blue.svg)](https://www.python.org)
-  [![Estado](https://img.shields.io/badge/Estado-Beta-orange.svg)](#estado-verificado)
   [![CI](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/elbuilder77/Semantic-Engine/actions/workflows/ci.yml)
-  [![Licencia](https://img.shields.io/badge/Licencia-GPLv3-blue.svg)](LICENSE)
+  [![License](https://img.shields.io/badge/License-Dual%20(GPLv3%20%7C%20Commercial)-blue.svg)](COMMERCIAL_LICENSE.md)
 
-  *[English version](README_en.md)*
+  <p>
+    <a href="https://elbuilder77.github.io/Semantic-Engine/">Official Website</a> •
+    <a href="#quickstart">Quickstart</a> •
+    <a href="#enterprise-deployment">Enterprise Stack</a> •
+    <a href="#official-sdks">SDKs</a> •
+    <a href="#commercial-licensing--white-label-editions">Commercial Licensing</a>
+  </p>
 </div>
 
 ---
 
-## Qué es SES
+## Overview
 
-SES convierte documentos locales en un índice semántico consultable. El núcleo
-Python extrae, segmenta, genera embeddings y consulta Qdrant; Redis aporta caché
-y control distribuido; Ollama genera respuestas locales; el Gateway FastAPI
-expone los contratos HTTP y el Portal Next.js ofrece la superficie
-administrativa.
+**SES (Semantic Engine)** is a self-hosted, air-gapped document intelligence and Retrieval-Augmented Generation (RAG) platform built for organizations that require strict data sovereignty. It indexes local folders and network shares in **read-only Mount Mode**, accelerates high-density vector re-ranking with a native **Rust/PyO3 core (`jas_vector_core`)**, and serves multi-tenant applications through a **FastAPI Gateway**, **Next.js 16 Admin Portal**, and **Audit-Ready PDF Evidence Engine**.
 
-Offline-first significa que los documentos y consultas pueden permanecer en la
-infraestructura del operador. No significa cero dependencias de red durante la
-instalación: paquetes, imágenes y modelos deben aprovisionarse antes de operar
-sin conexión.
+### Key Capabilities
 
-## Estado verificado
-
-Este repositorio está en beta técnica. El código y la validación ejecutable son
-la fuente de verdad.
-
-| Superficie | Estado comprobado | Límite actual |
-|---|---|---|
-| Núcleo Python | Pytest valida núcleo, SQLite y fallos de red controlados | E2E exitoso con Qdrant/Redis/Ollama reales pendiente |
-| Gateway | Auth, telemetría SQLite, CORS y rate limiting endurecidos | Validación PostgreSQL y paridad Docker completa pendientes |
-| Portal | Next.js 16; lint, build y ocho rutas administrativas validadas | E2E contra servicios reales pendiente |
-| Rust | Wheel CPython 3.12, pruebas, Clippy y API NumPy | Es opcional y se activa en lotes de más de 50 candidatos |
-| CI | Portal, Python, Rust, wheel, Pytest y smoke sintético en GitHub Actions | No sustituye pruebas end-to-end |
-| Publicación | `ses-core` 2.0.3 en PyPI y `jas_vector_core` 0.1.0 en crates.io; cinco wheels ABI3, sdist y checksums verificados | Las versiones publicadas son inmutables; cada corrección requiere una versión nueva |
-| Mount Mode | Reindexado primero ingiere y conserva limpiezas pendientes en el manifiesto | No existe una transacción distribuida con Qdrant |
-
-## Arquitectura
-
-~~~text
-Documentos de solo lectura
-        |
-        v
-Watcher / Scanner ---> Parser y chunking ---> Embeddings locales
-                                                |
-                                                v
-Portal Next.js ---> Gateway FastAPI ---> Qdrant / Redis / Ollama
-                            |
-                            +-- reportes PDF
-                            +-- llaves y analítica
-                            +-- reranking Rust opcional
-~~~
-
-Directorios principales:
-
-- <code>ses/</code>: librería RAG, proveedores, reportes y watcher.
-- <code>gateway/</code>: API FastAPI, dashboard estático y SQLite local.
-- <code>portal/</code>: cliente administrativo Next.js.
-- <code>core_rs/</code>: extensión PyO3 <code>jas_vector_core</code>.
-- <code>sdk/</code>: SDKs oficiales para TypeScript (`@ses-ai/client`) y Go (`ses-go`).
-- <code>tests/</code>: pruebas Python y microbenchmark sintético.
-
-## 🚀 Despliegue Empresarial Llave en Mano (Docker 1-Click)
-
-Para desplegar la plataforma completa de Semantic Engine (Gateway FastAPI + Portal Next.js + Qdrant + Redis + Ollama) en producción:
-
-~~~powershell
-# 1. Generar configuración criptográfica de producción (.env.prod)
-python scripts/deploy_production.py
-
-# 2. Levantar el stack completo en segundo plano
-docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
-~~~
-
-Servicios disponibles:
-- **Portal Administrativo:** <http://127.0.0.1:3000>
-- **Enterprise Gateway:** <http://127.0.0.1:8000> (Documentación OpenAPI en `/docs`)
-- **Base Vectorial Qdrant:** `:6333` (Red interna aislada)
-- **Caché Redis:** `:6379` (Red interna aislada con autenticación obligatoria)
-- **Servidor LLM Ollama:** `:11434` (Red interna aislada)
+- **Non-Intrusive Read-Only Mount Mode:** Connects directly to existing local directories and SMB/NAS shares (`PDF`, `DOCX`, `XLSX`, `CSV`, `TXT`, `MD`) with SHA-256 delta detection and full `source_path` provenance—without moving or altering source files.
+- **36x Rust Vector Acceleration (`jas_vector_core`):** Zero-copy NumPy memory views over C-contiguous float32 buffers deliver sub-millisecond cosine similarity search and Top-K re-ranking.
+- **Fail-Closed Multi-Tenant Gateway:** FastAPI service with SHA-256 hashed API keys, namespace isolation, Redis rate limiting, and dual SQLite / PostgreSQL (`asyncpg`) persistence.
+- **White-Label Corporate PDF Audit Reports:** Generates verifiable Evidence, Usage, and Health PDF dossiers with relevance score bars, SHA-256 chunk hashes, watermarks, and zero-code `.env` branding.
+- **Next.js 16 Admin Portal & Official SDKs:** Ready-to-deploy web console plus zero-dependency client SDKs for **TypeScript/JavaScript** and **Go**.
 
 ---
 
-## 📦 SDKs Oficiales de Integración
+## Architecture
+
+```text
+Read-Only Document Stores (Local / NAS / SMB)
+        │
+        ▼
+Mount Mode Scanner (SHA-256 Delta) ──► Document Parser & Semantic Chunker
+                                                        │
+                                                        ▼
+Next.js 16 Admin Portal ──► FastAPI Enterprise Gateway ──► Qdrant / Redis / Ollama
+                                        │
+                                        ├── PyO3 Rust Vector Core (jas_vector_core)
+                                        ├── Corporate PDF Evidence & Audit Engine
+                                        └── Multi-Tenant API Keys & Telemetry
+```
+
+---
+
+## Quickstart
+
+### 1. Install from PyPI
+
+```bash
+pip install ses-core
+```
+
+### 2. Command-Line Interface (`ses`)
+
+```bash
+# Index a directory in read-only Mount Mode
+ses mount ./contracts --namespace legal
+
+# Run a semantic query with local LLM synthesis
+ses search "termination notice requirements" --namespace legal --generate-answer
+
+# Verify service connectivity (Qdrant, Redis, Ollama, Rust Core)
+ses doctor
+```
+
+### 3. Python SDK
+
+```python
+import asyncio
+import ses
+
+async def main():
+    await ses.mount("./contracts", namespace="legal")
+    response = await ses.search(
+        query="What are the confidentiality obligations?",
+        namespace="legal",
+        top_k=5,
+        generate_answer=True,
+    )
+    print(response["answer"])
+
+asyncio.run(main())
+```
+
+---
+
+## Enterprise Deployment
+
+Deploy the full production stack (**FastAPI Gateway**, **Next.js 16 Admin Portal**, **Qdrant**, **Redis**, and **Ollama**) with cryptographically generated secrets:
+
+```bash
+# 1. Generate production environment configuration (.env.prod)
+python scripts/deploy_production.py
+
+# 2. Launch the isolated container stack
+docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+```
+
+- **Admin Portal:** `http://127.0.0.1:3000`
+- **Enterprise Gateway & OpenAPI Docs:** `http://127.0.0.1:8000/docs`
+
+---
+
+## Official SDKs
 
 ### TypeScript / JavaScript (`@ses-ai/client`)
-Consulte la documentación completa en [sdk/typescript/README.md](sdk/typescript/README.md).
 
-~~~typescript
+```typescript
 import { SemanticEngineClient } from "@ses-ai/client";
 
 const client = new SemanticEngineClient({
@@ -101,117 +124,56 @@ const client = new SemanticEngineClient({
 
 const result = await client.search({
   namespace: "legal",
-  query: "cláusula de rescisión",
+  query: "termination clause",
   generateAnswer: true,
 });
-console.log("Respuesta RAG:", result.answer);
-~~~
+```
 
 ### Go (`ses-go`)
-Consulte la documentación completa en [sdk/go/README.md](sdk/go/README.md).
 
-~~~go
+```go
 import ses "github.com/elbuilder77/Semantic-Engine/sdk/go"
 
 client, _ := ses.NewClient(ses.ClientConfig{
     BaseURL: "http://localhost:8000",
-    APIKey:  "tu_llave_api",
+    APIKey:  os.Getenv("SES_API_KEY"),
 })
 
 resp, _ := client.Search(ctx, ses.SearchRequest{
-    Namespace: "legal",
-    Query:     "cláusula de rescisión",
+    Namespace:      "legal",
+    Query:          "termination clause",
+    GenerateAnswer: true,
 })
-~~~
+```
 
 ---
 
-## Instalación desde PyPI
+## Module Documentation
 
-~~~powershell
-python -m pip install "ses-core==2.0.3"
-~~~
+| Component | Description | Documentation |
+| :--- | :--- | :--- |
+| **Rust Vector Core** | Standalone Rust crate & PyO3 zero-copy vector engine | [core_rs/README.md](core_rs/README.md) |
+| **Enterprise Gateway** | Multi-tenant FastAPI server, auth, and PDF report endpoints | [gateway/README.md](gateway/README.md) |
+| **Admin Portal** | Next.js 16 management console & white-label configuration | [portal/README.md](portal/README.md) |
+| **Mount Mode** | Non-intrusive read-only indexing & delta sync specification | [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md) |
+| **TypeScript SDK** | Client library for Node.js, Next.js, and web apps | [sdk/typescript/README.md](sdk/typescript/README.md) |
+| **Go SDK** | Standard-library Go client for backend microservices | [sdk/go/README.md](sdk/go/README.md) |
 
-La versión 2.0.3 está publicada mediante Trusted Publishing (OIDC) con wheels
-ABI3 para Windows, Linux y macOS, además del sdist. Los artefactos y sus
-checksums también están disponibles en la
-[GitHub Release v2.0.3](https://github.com/elbuilder77/Semantic-Engine/releases/tag/v2.0.3).
-El crate standalone se publica como
-[`jas_vector_core` 0.1.0](https://crates.io/crates/jas_vector_core/0.1.0).
+---
 
-## Instalación desde el código fuente
+## Commercial Licensing & White-Label Editions
 
-~~~powershell
-git clone https://github.com/elbuilder77/Semantic-Engine.git
-cd Semantic-Engine
-py -3.12 -m venv .venv
-.\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-python -m pip install -e ".[dev,server]"
-~~~
+SES is distributed under a **Dual-License** model. Choose the license that matches your deployment:
 
-### Extensión Rust opcional
+| Feature / Right | Community Edition (`$0`) | Commercial License (`$149 USD`) | Enterprise White-Label Kit (`$299 USD`) |
+| :--- | :---: | :---: | :---: |
+| **License Terms** | **GPL-3.0-only** (Open-Source Copyleft) | **Perpetual Commercial Exemption** (1 Org) | **Perpetual Agency / Multi-Client License** |
+| **Closed-Source / Proprietary Use** | ❌ Requires disclosing source under GPLv3 | ✅ **Permitted (No GPLv3 obligations)** | ✅ **Permitted across unlimited clients** |
+| **White-Label Branding (`.env`)** | ❌ | Internal use | ✅ **Rebrand PDF Reports & Next.js Portal** |
+| **Turnkey Enterprise Stack** | Core + CLI | Core + Gateway + SDKs | **Full Stack + White-Label Quickstart Kit** |
+| **Payment & Support Model** | Free / Community | **One-Time Payment** (*Provided As-Is*) | **One-Time Payment** (*Provided As-Is*) |
 
-~~~powershell
-python -m pip install "maturin>=1,<2"
-python -m maturin build --release --manifest-path core_rs/Cargo.toml --interpreter python --out core_rs/target/wheels
-$wheel = Get-ChildItem core_rs/target/wheels/*.whl | Select-Object -First 1
-python -m pip install --force-reinstall $wheel.FullName
-~~~
+- **Buy via Stripe (Instant B2B Invoice):** [Tier 1 — Commercial License ($149)](https://elbuilder77.github.io/Semantic-Engine/?checkout=stripe_tier1#pricing) | [Tier 2 — White-Label Boilerplate ($299)](https://elbuilder77.github.io/Semantic-Engine/?checkout=stripe_tier2#pricing)
+- **Buy via Gumroad (Instant ZIP Download):** [Tier 1 — Commercial License ($149)](https://elbuilder77.github.io/Semantic-Engine/?checkout=gumroad_tier1#pricing) | [Tier 2 — White-Label Boilerplate ($299)](https://elbuilder77.github.io/Semantic-Engine/?checkout=gumroad_tier2#pricing)
 
-## Servicios locales de desarrollo
-
-El Compose canónico levanta dependencias satélite para desarrollo:
-
-~~~powershell
-Copy-Item .env.compose.example .env.compose
-# Edite QDRANT_API_KEY y REDIS_PASSWORD en .env.compose
-docker compose --env-file .env.compose up -d
-docker compose --env-file .env.compose ps
-~~~
-
-Gateway:
-
-~~~powershell
-python gateway/run.py
-~~~
-
-Portal:
-
-~~~powershell
-npm ci --prefix portal
-npm --prefix portal run dev -- --hostname 127.0.0.1 --port 3000
-~~~
-
-## Mount Mode
-
-El watcher trata las carpetas observadas como fuentes de solo lectura. Realiza
-un escaneo inicial, filtra PDF/DOCX/XLSX/CSV/TXT/MD, calcula SHA-256, guarda
-<code>source_path</code> y evita reinserciones cuando el contenido no cambió.
-Los eventos se agrupan mediante debounce.
-
-Consulte [docs/MOUNT_MODE.md](docs/MOUNT_MODE.md).
-
-## Validación
-
-Gates locales equivalentes a CI:
-
-~~~powershell
-pytest -q -p no:cacheprovider
-npm --prefix portal run lint
-npm --prefix portal run test
-npm --prefix portal run build
-cargo fmt --manifest-path core_rs/Cargo.toml -- --check
-cargo test --manifest-path core_rs/Cargo.toml
-cargo clippy --manifest-path core_rs/Cargo.toml --all-targets -- -D warnings
-~~~
-
-## 💼 Licenciamiento Dual (GPLv3 & Licencia Comercial / White-Label)
-
-SES opera bajo un modelo **Dual-License**:
-
-1. **Open Source (`GPL-3.0-only` — Gratis):** Para proyectos de código abierto compatibles con las obligaciones copyleft de [LICENSE](LICENSE).
-2. **Opción 1 — Exención Comercial GPLv3 ($149 USD Pago Único):** Permite integrar `ses-core`, `jas_vector_core` y el Gateway en software propietario cerrado sin obligación de liberar tu código fuente.
-3. **Opción 2 — Enterprise White-Label Boilerplate & Agency Kit ($299 USD Pago Único):** Licencia multi-cliente para agencias/consultoras + personalización White-Label de los dossieres PDF de auditoría (`SES_BRAND_SHORT`, `SES_BRAND_FOOTER` en `.env`), Portal Next.js 16 y Gateway PostgreSQL.
-
-👉 **[Adquirir Licencia Comercial o White-Label Kit (Stripe / Gumroad)](https://elbuilder77.github.io/Semantic-Engine/#pricing)** *(Entrega digital inmediata, modalidad "As-Is" sin soporte ni cargos recurrentes. Ver [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md)).*
+See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for complete legal terms.

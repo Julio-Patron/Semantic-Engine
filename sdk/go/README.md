@@ -1,12 +1,10 @@
-# Semantic Engine Go SDK (`ses-go`)
+# ses-go — Official Go SDK for Semantic Engine
 
-Official high-performance Go client for **Semantic Engine (SES)**.
-
-Provides idiomatic, zero-dependency (standard library only) client bindings for semantic vector search, offline document ingestion, and hybrid cognitive RAG generation.
+Official zero-dependency Go client library (standard library only) for **SES (Semantic Engine)**. Designed for high-throughput backend microservices and enterprise pipelines.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 go get github.com/elbuilder77/Semantic-Engine/sdk/go
@@ -14,9 +12,10 @@ go get github.com/elbuilder77/Semantic-Engine/sdk/go
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
-### 1. Initialize Client
+### 1. Semantic Search & RAG Answer Generation
+
 ```go
 package main
 
@@ -24,6 +23,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	ses "github.com/elbuilder77/Semantic-Engine/sdk/go"
 )
@@ -31,63 +31,48 @@ import (
 func main() {
 	client, err := ses.NewClient(ses.ClientConfig{
 		BaseURL: "http://localhost:8000",
-		APIKey:  "your_gateway_api_key",
+		APIKey:  os.Getenv("SES_API_KEY"),
 	})
 	if err != nil {
-		log.Fatalf("Failed to initialize SES client: %v", err)
+		log.Fatal(err)
 	}
 
-	// 2. Perform Semantic Search & RAG Generation
 	ctx := context.Background()
-	searchResp, err := client.Search(ctx, ses.SearchRequest{
+	resp, err := client.Search(ctx, ses.SearchRequest{
 		Namespace:      "contracts",
 		Query:          "What are the confidentiality obligations?",
 		TopK:           5,
 		GenerateAnswer: true,
 	})
 	if err != nil {
-		log.Fatalf("Search failed: %v", err)
+		log.Fatal(err)
 	}
 
-	if searchResp.Answer != nil {
-		fmt.Printf("RAG Answer: %s\n", *searchResp.Answer)
+	if resp.Answer != nil {
+		fmt.Printf("Answer: %s\n", *resp.Answer)
 	}
-
-	for _, result := range searchResp.Results {
-		fmt.Printf("Found [%.2f score]: %s\n", result.Score, result.Text)
+	for _, hit := range resp.Results {
+		fmt.Printf("[%.2f] %s\n", hit.Score, hit.Text)
 	}
 }
 ```
 
-### 3. Ingest Plain Text
-```go
-ingestResp, err := client.IngestText(ctx, ses.IngestTextRequest{
-    Namespace: "contracts",
-    Text:      "Party A and Party B agree to standard non-disclosure terms for 2 years.",
-    Metadata:  map[string]interface{}{"type": "NDA", "year": 2026},
-})
-if err != nil {
-    log.Fatalf("Ingest failed: %v", err)
-}
-fmt.Printf("Document Ingested: ID=%s, Chunks=%d\n", ingestResp.DocumentID, ingestResp.ChunksCount)
-```
+### 2. Ingest Text & Document Streams
 
-### 4. Upload and Index Files (PDF, DOCX, XLSX, TXT)
 ```go
 file, err := os.Open("agreement.pdf")
 if err != nil {
-    log.Fatal(err)
+	log.Fatal(err)
 }
 defer file.Close()
 
-resp, err := client.IngestFile(ctx, "contracts", "agreement.pdf", file, map[string]interface{}{"department": "legal"})
-if err != nil {
-    log.Fatalf("File ingestion failed: %v", err)
-}
-fmt.Printf("File indexed: DocumentID=%s\n", resp.DocumentID)
+res, err := client.IngestFile(ctx, "contracts", "agreement.pdf", file, map[string]interface{}{
+	"department": "legal",
+})
 ```
 
 ---
 
-## 📜 License
-GPL-3.0-only
+## Licensing
+
+Distributed under **Dual-License** terms (`GPL-3.0-only` for open-source projects, or **Commercial License** for proprietary closed-source applications). See [COMMERCIAL_LICENSE.md](../../COMMERCIAL_LICENSE.md).

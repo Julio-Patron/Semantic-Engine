@@ -1,96 +1,72 @@
-# @ses-ai/client
+# @ses-ai/client — Official TypeScript / JavaScript SDK
 
-Official TypeScript/JavaScript client SDK for **Semantic Engine (SES)**.
-
-Enables search, hybrid cognitive re-ranking, document ingestion, and offline RAG generation across web applications, Next.js, Node.js microservices, and AI Agent workflows.
+Official TypeScript and JavaScript client library for **SES (Semantic Engine)**. Built with native `fetch` and zero external runtime dependencies for Node.js, Next.js, and browser environments.
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 npm install @ses-ai/client
-# or
-pnpm add @ses-ai/client
-# or
-yarn add @ses-ai/client
 ```
 
 ---
 
-## 🚀 Quickstart
+## Quickstart
 
 ### 1. Initialize Client
+
 ```typescript
 import { SemanticEngineClient } from "@ses-ai/client";
 
 const client = new SemanticEngineClient({
-  baseUrl: "http://localhost:8000",
+  baseUrl: process.env.SES_API_URL || "http://localhost:8000",
   apiKey: process.env.SES_API_KEY!,
 });
 ```
 
-### 2. Search & Generate Local RAG Answer
+### 2. Semantic Search & Local RAG Synthesis
+
 ```typescript
-const searchResults = await client.search({
+const response = await client.search({
   namespace: "legal_docs",
-  query: "What is the termination clause notice period?",
+  query: "What is the termination notice period?",
   topK: 5,
-  generateAnswer: true, // Ask the local LLM (Ollama) to answer using context
+  generateAnswer: true,
 });
 
-console.log("Answer:", searchResults.answer);
-console.log("Documents found:", searchResults.results);
+console.log("Synthesized Answer:", response.answer);
+console.log("Evidence Sources:", response.results);
 ```
 
-### 3. Ingest Raw Text
-```typescript
-const ingestResult = await client.ingestText({
-  namespace: "legal_docs",
-  text: "Contracts require a minimum of 30 days notice prior to renewal date.",
-  metadata: { author: "Legal Dept", year: 2026 },
-});
+### 3. Ingest Text & Files
 
-console.log("Ingested Document ID:", ingestResult.document_id);
-```
-
-### 4. Upload & Index Files (PDF, DOCX, XLSX, TXT)
 ```typescript
 import fs from "node:fs";
 
-const fileBuffer = fs.readFileSync("./policy.pdf");
+await client.ingestText({
+  namespace: "legal_docs",
+  text: "Agreements require 30 days written notice prior to termination.",
+  metadata: { category: "MSA", year: 2026 },
+});
 
 await client.ingestFile({
-  namespace: "policies",
-  file: fileBuffer,
-  filename: "policy.pdf",
-  metadata: { category: "HR" },
+  namespace: "legal_docs",
+  file: fs.readFileSync("./contract.pdf"),
+  filename: "contract.pdf",
 });
 ```
 
-### 5. Check Cluster Health
-```typescript
-const health = await client.getHealth();
-console.log("Status:", health.status); // "healthy"
-console.log("Qdrant:", health.components.qdrant.status);
-```
-
----
-
-## 🔒 Enterprise & Administrative Features
+### 4. Administrative & Telemetry Operations
 
 ```typescript
-// Create a new API key for a microservice
-const newKey = await client.createApiKey("service_agent_01", "standard");
-console.log("New API Key:", newKey.api_key);
-
-// Fetch Gateway usage analytics
+const newKey = await client.createApiKey("service_worker_01", "client");
 const stats = await client.getAnalytics();
-console.log("Total Requests:", stats.total_requests);
-console.log("Success Rate:", `${stats.success_rate * 100}%`);
+const health = await client.getHealth();
 ```
 
 ---
 
-## 📜 License
-GPL-3.0-only
+## Licensing
+
+Distributed under **Dual-License** terms (`GPL-3.0-only` for open-source projects, or **Commercial License** for proprietary closed-source applications). See [COMMERCIAL_LICENSE.md](../../COMMERCIAL_LICENSE.md).

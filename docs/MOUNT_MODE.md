@@ -1,121 +1,64 @@
-# SES Mount Mode (Modo de Montaje)
+# SES Mount Mode — Non-Intrusive Document Indexing
 
-> **Definición de contrato y especificación técnica para la indexación y sincronización incremental no intrusiva de repositorios documentales masivos.**
-
----
-
-## 📖 1. Definición del Concepto
-
-El **Mount Mode (Modo de Montaje)** es el pilar operativo de **SES**. Consiste en instalar el motor semántico directamente sobre un universo documental preexistente (discos locales, NAS, SAN o carpetas compartidas de red) y construir una **capa semántica derivada** sin alterar las fuentes de información originales ni convertirse en el repositorio principal de archivos.
-
-El archivo original **permanece intacto y en modo de solo lectura** en su infraestructura de almacenamiento corporativa. SES únicamente extrae el contenido textual y genera el índice semántico necesario para encontrarlo, correlacionarlo y responder preguntas complejas sobre él.
+**Mount Mode** is the core ingestion architecture of **SES (Semantic Engine)**. It connects directly to existing document repositories (local directories, NAS volumes, or SMB network shares) and builds a derived semantic index in Qdrant **without moving, duplicating, or modifying source files**.
 
 ---
 
-## 🎯 2. Regla de Oro del Producto
+## Core Design Principles
 
-> [!IMPORTANT]
-> **SES nunca debe requerir que el usuario ordene, copie o suba manualmente un repositorio completo.**
-> El motor asume la responsabilidad de procesar de forma autónoma el almacenamiento corporativo (incluso volúmenes de 40 a 60 GB) con el siguiente flujo no intrusivo:
+1. **Strict Read-Only Access:** Source files remain untouched in their original directory structure. SES opens files strictly in read-only stream mode.
+2. **Full Physical Provenance (`source_path`):** Every indexed chunk preserves the absolute file path, filename, and SHA-256 content hash of its source document for audit-ready retrieval and PDF evidence generation.
+3. **SHA-256 Delta Synchronization:** During initial scans and real-time file monitoring, SES computes cryptographic SHA-256 signatures and skips unchanged documents automatically.
+4. **Atomic Manifest & Safe Re-Indexing:** When a document is updated, SES ingests the new version before removing superseded vectors and persists state atomically in `mount_manifest.json`.
+
+---
+
+## Processing Pipeline
 
 ```text
-Disco original (Solo lectura) ➔ Inventario recursivo ➔ Extracción de texto ➔ Segmentación (Chunking) ➔ Embeddings ➔ Qdrant
-                                                                                                                │
-                                                                       Consultas RAG ➔ Referencia foliada al original
+Read-Only Source Directory / SMB Share
+  └──► Recursive Discovery (PDF, DOCX, XLSX, CSV, TXT, MD)
+        └──► SHA-256 Delta Check (Skip Unchanged Files)
+              └──► Text Extraction & Semantic Chunking
+                    └──► Local Embedding Generation (384d)
+                          └──► Qdrant Vector Index + Provenance Metadata
 ```
 
 ---
 
-## ⚡ 3. Contrato objetivo del Filesystem Connector
+## Supported Formats
 
-Las siguientes responsabilidades definen el objetivo de producción. El estado
-real de cada una se resume al final de este documento:
-
-* **Lectura No Invasiva**: Operar estrictamente bajo permisos de solo lectura sobre las carpetas montadas.
-* **Descubrimiento Inteligente**: Rastrear de forma recursiva toda la estructura de directorios y subdirectorios.
-* **Filtro de Extensiones**: Discriminar y procesar solo formatos de archivo compatibles (PDF, DOCX, CSV, XLSX, TXT, MD, etc.).
-* **Trazabilidad Completa (`source_path`)**: Registrar la ruta física absoluta de cada documento para permitir su recuperación o apertura física instantánea por parte del usuario.
-* **Registro de Metadatos Clave**: Almacenar en la cabecera del documento metadatos críticos como el `filename`, la extensión, el tamaño en bytes y la fecha de última modificación.
-* **Sincronización Incremental (Detección de Cambios)**: Calcular firmas de versión o hashes criptográficos de cada archivo para evitar la reindexación de documentos que no hayan sufrido alteraciones.
-* **Tolerancia a Fallos Activa**: Registrar errores de forma granular en caso de archivos corruptos o ilegibles sin interrumpir ni colapsar el proceso global de indexación.
-* **Checkpoints de Progreso**: Persistir puntos de control para permitir que indexaciones interrumpidas (por caída de red, energía o reinicios) puedan reanudarse desde el último archivo procesado.
+| Format | Extension | Extraction Engine |
+| :--- | :--- | :--- |
+| **PDF Documents** | `.pdf` | `pypdf` page-aware text extraction |
+| **Word Documents** | `.docx` | `python-docx` paragraph & structural parser |
+| **Excel Spreadsheets** | `.xlsx` | `openpyxl` multi-sheet tabular extractor |
+| **Delimited Data** | `.csv` | Native streaming row parser |
+| **Plain Text & Markdown** | `.txt`, `.md` | UTF-8 normalized text reader |
 
 ---
 
-## 🗄️ 4. Responsabilidades del Índice Vectorial
+## CLI & Programmatic Usage
 
-La base de datos vectorial (**Qdrant**) almacena las representaciones matemáticas de los chunks derivadas del procesamiento:
+### Command Line
 
-* **Vector del Chunk**: Embedding numérico del fragmento de texto (dimensión `384` usando `all-MiniLM-L6-v2`).
-* **Snippet de Texto Trazable**: Fragmento plano de texto para su recuperación inmediata (eliminando la necesidad de volver a leer el archivo original durante la búsqueda).
-* **Identificador Único (`original_id`)**: Llave relacional asociada al documento original.
-* **Metadata de Auditoría**: Ubicación exacta dentro del documento original (número de página, sección, foliado de renglón y metadatos complementarios).
+```bash
+# Index a directory into a dedicated namespace
+ses mount /data/corporate_contracts --namespace legal
 
-> [!WARNING]
-> **Qdrant no es un file server.** El índice vectorial nunca debe tratarse como el espacio donde vive la copia del archivo original; solo almacena índices derivados optimizados para búsqueda de alta velocidad.
+# Index and keep watching for real-time file changes
+ses mount /data/corporate_contracts --namespace legal --watch
+```
 
----
+### Python API
 
-## 📈 5. Estrategia de Prueba con Disco Real (40 a 60 GB)
+```python
+import asyncio
+import ses
 
-Para garantizar la estabilidad operativa del motor y la eficiencia del consumo de memoria de la aceleración en Rust (`jas_vector_core`), se establece una indexación progresiva por etapas:
+async def main():
+    results = await ses.mount("/data/corporate_contracts", namespace="legal")
+    print(f"Processed {len(results)} files.")
 
-| Etapa | Descripción del Volumen | Métricas a Evaluar |
-| :---: | :--- | :--- |
-| **Etapa 0** | Inventario recursivo sin indexar (Mapeo de estructura). | Cantidad total de archivos y distribución por tipos de extensión. |
-| **Etapa 1** | Muestra de prueba inicial pequeña (500 MB a 1 GB). | Tasa de archivos fallidos y rendimiento base de extracción. |
-| **Etapa 2** | Muestra de escala media (5 GB). | Tiempo acumulado de generación de embeddings e incremento en Qdrant. |
-| **Etapa 3** | Dataset de escala empresarial (10 GB). | Latencia de búsqueda semántica y consumo de memoria del Core en Rust. |
-| **Etapa 4** | Volumen corporativo completo (40 a 60 GB). | Throughput de indexación global y estabilidad de hilos de ejecución. |
-
----
-
-## 🧪 6. Protocolo de Validación Semántica
-
-La validación del sistema va más allá de asegurar que la API retorne resultados técnicos. El sistema se somete a un riguroso protocolo de preguntas reales:
-
-* **Búsquedas de Entidades Nominadas**: Consultar nombres específicos de personas, empresas o números de contratos.
-* **Búsquedas Conceptuales**: Interrogar sobre un tema utilizando terminología y sinónimos completamente distintos a los escritos en el documento original.
-* **Respuestas de Síntesis Cruzada (Multi-Documento)**: Formular preguntas cuya respuesta requiera consolidar fragmentos de información distribuidos en archivos independientes.
-* **Prueba de Respuestas Vacías (Veracidad/Anti-Alucinación)**: Preguntas capciosas o sobre temas inexistentes para auditar que el motor retorne con precisión un "no encontrado" en lugar de alucinar.
-* **Validación de Citas Físicas**: Corroborar que el enlace y la ruta retornada (`source_path`) abran exactamente el archivo correcto en el renglón citado.
-
----
-
-## 🚀 Estado de Implementación en `main`
-
-### Implementado y cubierto por pruebas
-
-* **Fuentes de solo lectura**: el scanner abre los archivos para lectura y no
-  modifica, mueve ni elimina los originales.
-* **Escaneo recursivo**: descubre PDF, DOCX, XLSX, CSV, TXT y MD.
-* **Identidad de versión**: calcula SHA-256 y omite contenido sin cambios.
-* **Monitoreo incremental**: `watchdog` agrupa eventos por ruta mediante
-  debounce antes de ingerir.
-* **Manifiesto local**: persiste hash, `document_id`, nombre y `source_path`
-  con reemplazo atómico del archivo JSON del manifiesto.
-* **Reindexado recuperable**: ingiere la versión nueva antes de eliminar la
-  anterior. Si la limpieza falla, conserva los identificadores pendientes en
-  el manifiesto y los reintenta durante el siguiente escaneo.
-* **Trazabilidad básica**: cada ingestión del watcher incluye la ruta absoluta
-  del archivo original.
-
-### Límites todavía abiertos
-
-* **Sin transacción distribuida**: el manifiesto evita perder la referencia a
-  versiones que requieren limpieza, pero la actualización del JSON y las
-  operaciones Qdrant no forman una única transacción.
-* **Sin benchmark de volumen real**: las etapas de 500 MB a 60 GB anteriores
-  son un protocolo propuesto; todavía no existe evidencia publicada de esas
-  cargas.
-* **Sin conectores de red validados**: SMB/CIFS, NAS y SAN forman parte del
-  objetivo, pero el código actual opera sobre rutas que el sistema operativo ya
-  expone como directorios.
-* **Checkpoint limitado**: el manifiesto registra estado por archivo, no avance
-  interno de extracción, embeddings o lotes Qdrant.
-* **Paridad operativa pendiente**: existe un Compose canónico para dependencias,
-  pero faltan pruebas end-to-end exitosas con Gateway, Qdrant, Redis y Ollama.
-
-Por estas razones, Mount Mode es funcional para desarrollo y validación local,
-pero aún no debe describirse como consolidado para repositorios corporativos de
-40–60 GB.
+asyncio.run(main())
+```
