@@ -63,7 +63,7 @@ results = jas_vector_core.cosine_similarity_search_numpy(query, docs, top_k=5)
 `jas_vector_core` is distributed under a **Dual-License** model:
 
 1. **Open Source (`GPL-3.0-only` — Free):** Free for open-source software complying with GPLv3 copyleft terms.
-2. **Commercial Dual-License Exemption ($149 USD One-Time):** Perpetual license for 1 organization to link or embed `jas_vector_core` and `ses-core` in closed-source proprietary software without GPLv3 source disclosure obligations.
-3. **Enterprise White-Label Suite ($299 USD One-Time):** Unlimited client deployments for agencies and consultancies + full SES Enterprise Gateway, Next.js 16 Portal, and White-Label PDF Audit Engine.
+2. **Commercial Dual-License Exemption ($149 USD One-Time):** [Purchase via Stripe](https://buy.stripe.com/3cI14odkL9TS1Zy91ke3e00) — Perpetual license for 1 organization to link or embed `jas_vector_core` and `ses-core` in closed-source proprietary software without GPLv3 source disclosure obligations.
+3. **Enterprise White-Label Suite ($299 USD One-Time):** [Purchase via Stripe](https://buy.stripe.com/cNi8wQ3KbaXW7jSb9se3e01) — Unlimited client deployments for agencies and consultancies + full SES Enterprise Gateway, Next.js 16 Portal, and White-Label PDF Audit Engine.
 
-👉 **[Acquire a Commercial License or White-Label Kit](https://elbuilder77.github.io/Semantic-Engine/#pricing)** *(Instant digital delivery, provided strictly "As-Is" with zero recurring fees).*
+See [COMMERCIAL_LICENSE.md](https://github.com/elbuilder77/Semantic-Engine/blob/main/COMMERCIAL_LICENSE.md) for complete legal terms.

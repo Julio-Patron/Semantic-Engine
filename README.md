@@ -173,7 +173,7 @@ SES is distributed under a **Dual-License** model. Choose the license that match
 | **Turnkey Enterprise Stack** | Core + CLI | Core + Gateway + SDKs | **Full Stack + White-Label Quickstart Kit** |
 | **Payment & Support Model** | Free / Community | **One-Time Payment** (*Provided As-Is*) | **One-Time Payment** (*Provided As-Is*) |
 
-- **Buy via Stripe (Instant B2B Invoice):** [Tier 1 — Commercial License ($149)](https://elbuilder77.github.io/Semantic-Engine/?checkout=stripe_tier1#pricing) | [Tier 2 — White-Label Boilerplate ($299)](https://elbuilder77.github.io/Semantic-Engine/?checkout=stripe_tier2#pricing)
-- **Buy via Gumroad (Instant ZIP Download):** [Tier 1 — Commercial License ($149)](https://elbuilder77.github.io/Semantic-Engine/?checkout=gumroad_tier1#pricing) | [Tier 2 — White-Label Boilerplate ($299)](https://elbuilder77.github.io/Semantic-Engine/?checkout=gumroad_tier2#pricing)
+- **Option 1 — Commercial Dual-License ($149 USD):** [Purchase via Stripe Checkout](https://buy.stripe.com/3cI14odkL9TS1Zy91ke3e00)
+- **Option 2 — Enterprise White-Label Boilerplate & Agency Kit ($299 USD):** [Purchase via Stripe Checkout](https://buy.stripe.com/cNi8wQ3KbaXW7jSb9se3e01)
 
 See [COMMERCIAL_LICENSE.md](COMMERCIAL_LICENSE.md) for complete legal terms.
